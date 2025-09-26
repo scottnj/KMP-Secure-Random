@@ -17,3 +17,7 @@ captures
 !*.xcworkspace/contents.xcworkspacedata
 **/xcshareddata/WorkspaceSettings.xcsettings
 node_modules/
+
+# Kotlin/JS and WASM build artifacts
+kotlin-js-store/
+yarn.lock
