@@ -75,3 +75,157 @@ The library uses Kotlin Multiplatform's expect/actual mechanism for platform-spe
 - Comprehensive test framework ready
 - Clean project structure with no UI dependencies
 - All simulator tests pass (tvOS, watchOS, iOS)
+
+## Production Architecture
+
+This library follows clean architecture principles with robust error handling and platform-specific adapters:
+
+### Clean Architecture Layers
+- **Domain Layer**: Core `SecureRandom` interface with `Result<T>` error handling
+- **Application Layer**: Use cases, validation logic, and business rules
+- **Infrastructure Layer**: Platform-specific adapters using adapter pattern
+- **Clean Separation**: Each platform implementation as isolated, testable adapter
+
+### Error Handling Strategy
+- **Result<T> Pattern**: All operations return `SecureRandomResult<T>` instead of throwing exceptions
+- **Custom Exception Hierarchy**:
+  - `SecureRandomException` - Base exception class
+  - `SecureRandomInitializationException` - Platform API initialization failures
+  - `SecureRandomGenerationException` - Random generation failures
+  - `InvalidParameterException` - Invalid bounds/parameters
+- **Graceful Degradation**: Fallback mechanisms where appropriate
+- **Platform-Specific Handling**: Handle platform-specific failure modes
+
+### Quality Assurance
+- **Cross-Platform Logging**: `kermit` for structured, security-aware logging
+- **Static Analysis**: `detekt` for Kotlin code quality and security analysis
+- **Code Coverage**: `kover` for comprehensive test coverage reporting
+- **Security Scanning**: OWASP dependency checking and vulnerability analysis
+- **Performance Monitoring**: Benchmarks for random generation across platforms
+
+### Implementation Strategy
+- **One Platform at a Time**: Start with JVM, then expand to other platforms
+- **Adapter Pattern**: Platform implementations as clean, interchangeable adapters
+- **Comprehensive Testing**: Statistical randomness tests, security tests, performance benchmarks
+- **Thread Safety**: All implementations guaranteed thread-safe
+- **Memory Security**: Secure handling and clearing of sensitive random data
+
+## Implementation Roadmap
+
+### Phase 1: Foundation (JVM-First Approach)
+1. JVM implementation with `java.security.SecureRandom` adapter
+2. Comprehensive error handling with `Result<T>` types
+3. Statistical randomness validation and security tests
+4. Performance benchmarks and thread-safety verification
+
+### Phase 2: Platform Expansion
+1. **Android**: Android-specific secure random APIs with fallbacks
+2. **iOS/Apple Platforms**: `SecRandomCopyBytes` implementation with error handling
+3. **JavaScript/WASM**: Web Crypto API with Node.js crypto fallback
+4. **Native Platforms**: OS-level secure random sources (Linux, Windows, etc.)
+
+### Phase 3: Production Readiness
+1. CI/CD pipeline for automated testing across all 20+ platforms
+2. Documentation generation with dokka
+3. Security audit and penetration testing
+4. Performance optimization and memory leak prevention
+
+## Development Todo Checklist
+
+### 🏗️ Phase 1: Foundation & Infrastructure
+- [ ] **Dependencies & Build Setup**
+  - [ ] Add `kermit` logging dependency to build.gradle.kts
+  - [ ] Add `detekt` static analysis plugin and configuration
+  - [ ] Add `kover` code coverage plugin and configuration
+  - [ ] Add OWASP dependency-check plugin
+  - [ ] Add `dokka` documentation generation plugin
+
+- [ ] **Core Architecture**
+  - [ ] Create `SecureRandomResult<T>` sealed class for error handling
+  - [ ] Create custom exception hierarchy (`SecureRandomException`, `SecureRandomInitializationException`, etc.)
+  - [ ] Design enhanced `SecureRandom` interface with Result<T> return types
+  - [ ] Create parameter validation utilities
+  - [ ] Set up cross-platform logging infrastructure with kermit
+
+### 🎯 Phase 2: JVM Implementation (First Platform)
+- [ ] **JVM Secure Random Adapter**
+  - [ ] Create `JvmSecureRandomAdapter` class wrapping `java.security.SecureRandom`
+  - [ ] Implement proper algorithm selection (NativePRNG, SHA1PRNG, etc.)
+  - [ ] Add comprehensive error handling for JVM-specific failures
+  - [ ] Ensure thread-safety and performance optimization
+  - [ ] Implement secure memory handling and cleanup
+
+- [ ] **Enhanced Common Interface**
+  - [ ] Update common `SecureRandom` interface with Result<T> methods
+  - [ ] Add parameter validation for all public methods
+  - [ ] Include security-focused method contracts and documentation
+  - [ ] Maintain backward compatibility where possible
+
+### 🧪 Phase 3: Comprehensive Testing (JVM)
+- [ ] **Statistical Randomness Tests**
+  - [ ] Implement chi-square test for uniform distribution
+  - [ ] Add entropy analysis tests
+  - [ ] Create NIST randomness test suite integration
+  - [ ] Add autocorrelation tests for independence
+
+- [ ] **Security & Edge Case Testing**
+  - [ ] Test error conditions (invalid parameters, system failures)
+  - [ ] Verify thread-safety with concurrent access tests
+  - [ ] Test memory security (no sensitive data leaks)
+  - [ ] Add performance benchmarks and regression tests
+
+- [ ] **Integration Testing**
+  - [ ] Test actual JVM SecureRandom integration (not mocks)
+  - [ ] Verify behavior across different JVM implementations
+  - [ ] Test under resource constraints and failure scenarios
+
+### 📊 Phase 4: Quality Assurance & Tooling
+- [ ] **Static Analysis & Code Quality**
+  - [ ] Configure detekt rules for security and performance
+  - [ ] Set up code coverage targets with kover (>90% target)
+  - [ ] Run OWASP dependency vulnerability scans
+  - [ ] Generate API documentation with dokka
+
+- [ ] **Build & Testing Infrastructure**
+  - [ ] Update build commands in CLAUDE.md for new tools
+  - [ ] Add code quality checks to `./gradlew check`
+  - [ ] Set up automated quality gates
+  - [ ] Create developer-friendly error messages and logging
+
+### 🌐 Phase 5: Platform Expansion
+- [ ] **Android Implementation**
+  - [ ] Create `AndroidSecureRandomAdapter` with Android-specific APIs
+  - [ ] Add fallback mechanisms for older Android versions
+  - [ ] Test on real Android devices and emulators
+
+- [ ] **iOS/Apple Platforms**
+  - [ ] Implement `AppleSecureRandomAdapter` using `SecRandomCopyBytes`
+  - [ ] Handle Apple-specific error conditions
+  - [ ] Test on iOS simulators and real devices
+
+- [ ] **JavaScript/WASM Platforms**
+  - [ ] Create `WebSecureRandomAdapter` using Web Crypto API
+  - [ ] Add Node.js crypto fallback for server-side JS
+  - [ ] Handle browser compatibility issues
+
+- [ ] **Native Platforms (Linux, Windows, etc.)**
+  - [ ] Implement OS-specific secure random sources
+  - [ ] Handle platform-specific error conditions
+  - [ ] Test cross-compilation and native builds
+
+### 🚀 Phase 6: Production Readiness
+- [ ] **CI/CD Pipeline**
+  - [ ] Set up GitHub Actions for all 20+ KMP targets
+  - [ ] Add automated testing across platforms
+  - [ ] Set up automated security scanning and quality gates
+
+- [ ] **Documentation & Release**
+  - [ ] Generate comprehensive API documentation
+  - [ ] Create usage examples and best practices guide
+  - [ ] Perform security audit and penetration testing
+  - [ ] Prepare for production release and versioning
+
+### 📋 Current Progress Tracking
+**Active Phase**: Foundation & Infrastructure
+**Next Milestone**: Complete JVM implementation with comprehensive testing
+**Platform Focus**: JVM-first approach with clean architecture patterns
