@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<suppressions xmlns="https://jeremylong.github.io/DependencyCheck/dependency-suppression.1.3.xsd">
+    <!--
+        OWASP Dependency Check Suppressions
+        This file contains suppression rules for false positives or acceptable risks
+        Each suppression should include a justification comment
+    -->
+
+    <!-- Example suppression for development dependencies that don't affect production
+    <suppress>
+        <notes>Kotlin Test dependencies are only used during testing and don't affect production</notes>
+        <packageUrl regex="true">^pkg:maven/org\.jetbrains\.kotlin/kotlin-test.*$</packageUrl>
+        <cve>CVE-EXAMPLE-2024</cve>
+    </suppress>
+    -->
+</suppressions>

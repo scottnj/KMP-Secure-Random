@@ -51,6 +51,8 @@ Platform-specific tests:
 - Static analysis: `./gradlew detekt`
 - Code coverage: `./gradlew koverHtmlReport`
 - Coverage verification: `./gradlew koverVerify`
+- Dependency vulnerability scan: `./gradlew dependencyCheckAnalyze`
+- OWASP dependency-check smoke test: `./gradlew owaspDependencyCheckSmokeTest`
 - Gradle sync: `./gradlew --refresh-dependencies`
 
 ## Architecture Notes
@@ -68,6 +70,7 @@ The library uses Kotlin Multiplatform's expect/actual mechanism for platform-spe
 - **Cross-Platform Logging**: Kermit dependency added and tested across all platforms
 - **Static Analysis**: Detekt plugin integrated with security and quality rules
 - **Code Coverage**: Kover plugin integrated with 20% minimum coverage verification
+- **Dependency Security**: OWASP dependency-check plugin integrated for vulnerability scanning
 - **Build System**: All 20+ KMP targets compile and build successfully
 - **Test Framework**: Comprehensive testing infrastructure validated
 - **Project Structure**: Clean architecture with proper .gitignore exclusions
@@ -113,7 +116,7 @@ This library follows clean architecture principles with robust error handling an
 - **Cross-Platform Logging**: `kermit` for structured, security-aware logging ✅ **IMPLEMENTED**
 - **Static Analysis**: `detekt` for Kotlin code quality and security analysis ✅ **IMPLEMENTED**
 - **Code Coverage**: `kover` for comprehensive test coverage reporting ✅ **IMPLEMENTED**
-- **Security Scanning**: OWASP dependency checking and vulnerability analysis
+- **Security Scanning**: OWASP dependency-check for vulnerability analysis ✅ **IMPLEMENTED**
 - **Performance Monitoring**: Benchmarks for random generation across platforms
 
 ### Implementation Strategy
@@ -150,7 +153,7 @@ This library follows clean architecture principles with robust error handling an
   - [x] Add `kermit` logging dependency to build.gradle.kts
   - [x] Add `detekt` static analysis plugin and configuration
   - [x] Add `kover` code coverage plugin and configuration
-  - [ ] Add OWASP dependency-check plugin
+  - [x] Add OWASP dependency-check plugin
   - [ ] Add `dokka` documentation generation plugin
 
 - [ ] **Core Architecture**
@@ -196,12 +199,13 @@ This library follows clean architecture principles with robust error handling an
 - [ ] **Static Analysis & Code Quality**
   - [x] Configure detekt rules for security and performance
   - [ ] Set up code coverage targets with kover (>90% target)
-  - [ ] Run OWASP dependency vulnerability scans
+  - [x] Run OWASP dependency vulnerability scans
   - [ ] Generate API documentation with dokka
 
 - [ ] **Build & Testing Infrastructure**
   - [x] Update build commands in CLAUDE.md for new tools
   - [x] Add code quality checks to `./gradlew check`
+  - [x] Create OWASP dependency-check smoke test validation
   - [ ] Set up automated quality gates
   - [ ] Create developer-friendly error messages and logging
 
@@ -244,8 +248,9 @@ This library follows clean architecture principles with robust error handling an
 - ✅ Kermit logging infrastructure
 - ✅ Detekt static analysis integration
 - ✅ Kover code coverage tracking (20% minimum threshold)
+- ✅ OWASP dependency-check plugin for vulnerability scanning
 - ✅ All 20+ KMP targets building successfully
 - ✅ Tests running on 12 available platforms
 
-**Next Milestone**: Add OWASP dependency-check plugin, then begin JVM implementation
+**Next Milestone**: Add dokka documentation plugin, then begin JVM implementation
 **Platform Focus**: JVM-first approach with clean architecture patterns
