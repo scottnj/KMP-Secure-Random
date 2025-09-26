@@ -21,3 +21,9 @@ node_modules/
 # Kotlin/JS and WASM build artifacts
 kotlin-js-store/
 yarn.lock
+
+# Log files and temporary build artifacts
+*.log
+build.log
+debug.log
+test.log
