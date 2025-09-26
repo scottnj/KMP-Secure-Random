@@ -1,7 +1,0 @@
-TEAM_ID=
-
-PRODUCT_NAME=kmp_secure_random
-PRODUCT_BUNDLE_IDENTIFIER=com.scottnj.kmp_secure_random.kmp_secure_random$(TEAM_ID)
-
-CURRENT_PROJECT_VERSION=1
-MARKETING_VERSION=1.0
