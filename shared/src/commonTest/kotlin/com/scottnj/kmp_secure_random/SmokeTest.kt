@@ -24,12 +24,16 @@ class SmokeTest {
         // This test validates that our code follows basic quality standards
         // that will be enforced by detekt static analysis
 
-        // Test that we can create instances of our main class
-        val secureRandom = createSecureRandom()
+        // Test that we can create instances of our main class with Result-based API
+        val secureRandomResult = createSecureRandom()
 
         // If this test passes, our basic code structure is sound for detekt analysis
         // The fact that createSecureRandom() compiles and runs validates our API design
-        val className = secureRandom::class.simpleName
+        assertEquals(true, secureRandomResult.isSuccess, "SecureRandom creation should succeed in smoke test")
+
+        // Validate the result contains a proper SecureRandom instance
+        val secureRandom = secureRandomResult.getOrNull()
+        val className = secureRandom?.let { it::class.simpleName }
         assertEquals(true, className?.contains("SecureRandom"), "Class name should contain 'SecureRandom'")
     }
 
@@ -39,10 +43,15 @@ class SmokeTest {
         logger.d { "Testing code coverage functionality with kover" }
 
         // Exercise some of the SecureRandom interface to generate coverage data
-        val secureRandom = createSecureRandom()
+        val secureRandomResult = createSecureRandom()
+        assertEquals(true, secureRandomResult.isSuccess, "SecureRandom creation should succeed")
 
         // Test factory function coverage - verify we get different instances
-        val factoryTest = createSecureRandom()
+        val factoryTestResult = createSecureRandom()
+        assertEquals(true, factoryTestResult.isSuccess, "Second SecureRandom creation should succeed")
+
+        val secureRandom = secureRandomResult.getOrNull()
+        val factoryTest = factoryTestResult.getOrNull()
         assertEquals(false, secureRandom === factoryTest, "Factory should create distinct instances")
 
         // Log success for coverage tracking
