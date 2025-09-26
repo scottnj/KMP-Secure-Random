@@ -1,5 +1,6 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
+import java.util.Properties
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
@@ -133,8 +134,11 @@ kover {
             }
             verify {
                 onCheck = true
-                rule {
-                    minBound(20)
+                rule("Minimum line coverage rate in percent") {
+                    minBound(90)
+                }
+                rule("Minimum branch coverage rate in percent") {
+                    minBound(85)
                 }
             }
         }
@@ -173,10 +177,34 @@ dependencyCheck {
         golangModEnabled = false
     }
     nvd {
-        apiKey = System.getenv("NVD_API_KEY") ?: ""
-        delay = 16000
+        // Try to get API key from multiple sources in priority order:
+        // 1. Environment variable (CI/CD friendly)
+        // 2. local.properties (secure local development - not in git)
+        // 3. gradle.properties (if you choose to add it there)
+        // 4. Empty string (will work but be slower)
+        val localProperties = Properties()
+        val localPropertiesFile = rootProject.file("local.properties")
+        if (localPropertiesFile.exists()) {
+            localPropertiesFile.inputStream().use { localProperties.load(it) }
+        }
+
+        val nvdApiKey = System.getenv("NVD_API_KEY")
+            ?: localProperties.getProperty("nvd.api.key")
+            ?: project.findProperty("nvd.api.key")?.toString()
+            ?: ""
+
+        apiKey = nvdApiKey
+        delay = if (nvdApiKey.isNotEmpty() && nvdApiKey != "YOUR_NVD_API_KEY_HERE") 3000 else 16000  // Faster with valid API key
         maxRetryCount = 10
         validForHours = 24
+
+        if (nvdApiKey.isEmpty() || nvdApiKey == "YOUR_NVD_API_KEY_HERE") {
+            println("⚠️ NVD API key not configured. Dependency checks will be slower.")
+            println("   Add your key to local.properties: nvd.api.key=your-key-here")
+            println("   Get a free key at: https://nvd.nist.gov/developers/request-an-api-key")
+        } else {
+            println("✅ NVD API key configured successfully (using ${if (System.getenv("NVD_API_KEY") != null) "environment variable" else "local.properties"})")
+        }
     }
     failBuildOnCVSS = 7.0f
 }
@@ -265,6 +293,56 @@ tasks.register("owaspDependencyCheckSmokeTest") {
         println("   📁 Output directory: ${outputDirectory.absolutePath}")
         println("   ⚙️  Configuration validated in build.gradle.kts")
         println("   🔧 Plugin properly loaded and configured for vulnerability scanning")
+    }
+}
+
+// Quality gates task that enforces all quality standards
+tasks.register("qualityGates") {
+    group = "verification"
+    description = "Runs comprehensive quality gates including tests, coverage, static analysis, and security checks"
+
+    // Define dependencies on all quality checks
+    dependsOn(
+        tasks.named("allTests"),
+        tasks.named("koverVerify"),
+        tasks.named("detekt"),
+        tasks.named("dependencyCheckAnalyze"),
+        tasks.named("dokkaHtml")
+    )
+
+    doLast {
+        println("🎯 All Quality Gates PASSED! ✅")
+        println("   📋 Tests: All platforms tested")
+        println("   📊 Coverage: >90% line coverage achieved")
+        println("   🔍 Static Analysis: Clean detekt scan")
+        println("   🛡️  Security: OWASP dependency check passed")
+        println("   📖 Documentation: Generated successfully")
+        println("   🚀 Project ready for production!")
+    }
+}
+
+// Enhanced check task that includes all quality gates
+tasks.named("check") {
+    dependsOn(tasks.named("qualityGates"))
+}
+
+// Developer-friendly quick check task for local development
+tasks.register("quickCheck") {
+    group = "verification"
+    description = "Quick quality checks for local development (tests, coverage, detekt)"
+
+    dependsOn(
+        tasks.named("jvmTest"),
+        tasks.named("koverVerify"),
+        tasks.named("detekt")
+    )
+
+    doLast {
+        println("⚡ Quick Quality Check PASSED! ✅")
+        println("   🧪 JVM Tests: Passed")
+        println("   📊 Coverage: >90% achieved")
+        println("   🔍 Static Analysis: Clean")
+        println("   💻 Ready for local development!")
     }
 }
 
