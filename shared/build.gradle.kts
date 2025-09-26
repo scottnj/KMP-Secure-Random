@@ -5,6 +5,7 @@ plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.androidLibrary)
     alias(libs.plugins.detekt)
+    alias(libs.plugins.dokka)
     alias(libs.plugins.kover)
     alias(libs.plugins.owaspDependencyCheck)
 }
@@ -180,6 +181,26 @@ dependencyCheck {
     failBuildOnCVSS = 7.0f
 }
 
+// Dokka configuration for API documentation generation
+tasks.withType<org.jetbrains.dokka.gradle.DokkaTask>().configureEach {
+    moduleName.set("KMP-Secure-Random")
+    outputDirectory.set(layout.buildDirectory.dir("dokka"))
+
+    dokkaSourceSets {
+        configureEach {
+            includeNonPublic.set(false)
+            skipEmptyPackages.set(true)
+            skipDeprecated.set(false)
+            suppressObviousFunctions.set(true)
+
+            perPackageOption {
+                matchingRegex.set(".*\\.internal.*")
+                suppress.set(true)
+            }
+        }
+    }
+}
+
 // Smoke test task for OWASP dependency-check plugin
 tasks.register("owaspDependencyCheckSmokeTest") {
     group = "verification"
@@ -244,5 +265,85 @@ tasks.register("owaspDependencyCheckSmokeTest") {
         println("   📁 Output directory: ${outputDirectory.absolutePath}")
         println("   ⚙️  Configuration validated in build.gradle.kts")
         println("   🔧 Plugin properly loaded and configured for vulnerability scanning")
+    }
+}
+
+// Smoke test task for Dokka documentation generation plugin
+tasks.register("dokkaSmokeTest") {
+    group = "verification"
+    description = "Smoke test to verify Dokka documentation generation actually works"
+
+    // Make this task depend on dokkaHtml to actually test generation
+    dependsOn(tasks.named("dokkaHtml"))
+
+    // Configuration cache compatible approach - capture at configuration time
+    val buildFile = file("build.gradle.kts")
+    val commonMainDir = file("src/commonMain/kotlin")
+    val outputDir = layout.buildDirectory.dir("dokka")
+
+    doLast {
+        println("📚 Running Dokka smoke test...")
+
+        // 1. Verify the plugin is loaded and tasks are available
+        val allTaskNames = tasks.names
+        val dokkaTasks = allTaskNames.filter { it.startsWith("dokka") }
+        require(dokkaTasks.isNotEmpty()) {
+            "❌ Dokka plugin not properly loaded - no dokka tasks found"
+        }
+
+        // 2. Verify expected tasks are present
+        val expectedTasks = listOf("dokkaHtml")
+        val missingTasks = expectedTasks.filter { it !in dokkaTasks }
+        require(missingTasks.isEmpty()) {
+            "❌ Missing Dokka tasks: $missingTasks"
+        }
+
+        // 3. Verify dokka actually generated documentation files
+        val outputDirectory = outputDir.get().asFile
+        require(outputDirectory.exists() && outputDirectory.isDirectory) {
+            "❌ Dokka output directory not found: ${outputDirectory.absolutePath}"
+        }
+
+        val indexHtml = File(outputDirectory, "index.html")
+        require(indexHtml.exists() && indexHtml.isFile) {
+            "❌ Dokka did not generate index.html: ${indexHtml.absolutePath}"
+        }
+
+        val navigationHtml = File(outputDirectory, "navigation.html")
+        require(navigationHtml.exists() && navigationHtml.isFile) {
+            "❌ Dokka did not generate navigation.html: ${navigationHtml.absolutePath}"
+        }
+
+        // 4. Verify HTML content contains expected documentation
+        val indexContent = indexHtml.readText()
+        require(indexContent.contains("KMP-Secure-Random")) {
+            "❌ Generated documentation does not contain module name 'KMP-Secure-Random'"
+        }
+        require(indexContent.contains("html") && indexContent.contains("</html>")) {
+            "❌ Generated index.html is not valid HTML"
+        }
+
+        // 5. Verify configuration file structure
+        require(buildFile.exists()) {
+            "❌ Build configuration file not found"
+        }
+
+        val buildContent = buildFile.readText()
+        require(buildContent.contains("dokka")) {
+            "❌ Dokka configuration not found in build.gradle.kts"
+        }
+
+        // 6. Verify source sets exist for documentation
+        require(commonMainDir.exists()) {
+            "❌ Common main source directory not found: ${commonMainDir.absolutePath}"
+        }
+
+        println("✅ Dokka smoke test PASSED - Documentation actually generated!")
+        println("   📋 Available tasks: ${dokkaTasks.sorted()}")
+        println("   📁 Output directory: ${outputDirectory.absolutePath}")
+        println("   📄 Generated files: index.html (${indexHtml.length()} bytes), navigation.html (${navigationHtml.length()} bytes)")
+        println("   📂 Source directory: ${commonMainDir.absolutePath}")
+        println("   ⚙️  Configuration validated in build.gradle.kts")
+        println("   📖 Dokka successfully generated HTML documentation")
     }
 }

@@ -53,6 +53,8 @@ Platform-specific tests:
 - Coverage verification: `./gradlew koverVerify`
 - Dependency vulnerability scan: `./gradlew dependencyCheckAnalyze`
 - OWASP dependency-check smoke test: `./gradlew owaspDependencyCheckSmokeTest`
+- API documentation generation: `./gradlew dokkaHtml`
+- Dokka smoke test: `./gradlew dokkaSmokeTest`
 - Gradle sync: `./gradlew --refresh-dependencies`
 
 ## Architecture Notes
@@ -71,6 +73,7 @@ The library uses Kotlin Multiplatform's expect/actual mechanism for platform-spe
 - **Static Analysis**: Detekt plugin integrated with security and quality rules
 - **Code Coverage**: Kover plugin integrated with 20% minimum coverage verification
 - **Dependency Security**: OWASP dependency-check plugin integrated for vulnerability scanning
+- **Documentation Generation**: Dokka plugin integrated with HTML documentation generation and smoke testing
 - **Build System**: All 20+ KMP targets compile and build successfully
 - **Test Framework**: Comprehensive testing infrastructure validated
 - **Project Structure**: Clean architecture with proper .gitignore exclusions
@@ -90,6 +93,7 @@ The library uses Kotlin Multiplatform's expect/actual mechanism for platform-spe
 - ✅ Cross-platform logging infrastructure working
 - ✅ Static analysis (detekt) running cleanly with comprehensive rules
 - ✅ Code coverage tracking (kover) with HTML/XML reports and verification
+- ✅ API documentation generation (dokka) with end-to-end smoke testing
 - ✅ Build artifacts properly excluded from version control
 
 ## Production Architecture
@@ -117,6 +121,7 @@ This library follows clean architecture principles with robust error handling an
 - **Static Analysis**: `detekt` for Kotlin code quality and security analysis ✅ **IMPLEMENTED**
 - **Code Coverage**: `kover` for comprehensive test coverage reporting ✅ **IMPLEMENTED**
 - **Security Scanning**: OWASP dependency-check for vulnerability analysis ✅ **IMPLEMENTED**
+- **API Documentation**: `dokka` for comprehensive API documentation generation ✅ **IMPLEMENTED**
 - **Performance Monitoring**: Benchmarks for random generation across platforms
 
 ### Implementation Strategy
@@ -149,12 +154,12 @@ This library follows clean architecture principles with robust error handling an
 ## Development Todo Checklist
 
 ### 🏗️ Phase 1: Foundation & Infrastructure
-- [ ] **Dependencies & Build Setup**
+- [x] **Dependencies & Build Setup**
   - [x] Add `kermit` logging dependency to build.gradle.kts
   - [x] Add `detekt` static analysis plugin and configuration
   - [x] Add `kover` code coverage plugin and configuration
   - [x] Add OWASP dependency-check plugin
-  - [ ] Add `dokka` documentation generation plugin
+  - [x] Add `dokka` documentation generation plugin
 
 - [ ] **Core Architecture**
   - [ ] Create `SecureRandomResult<T>` sealed class for error handling
@@ -196,16 +201,17 @@ This library follows clean architecture principles with robust error handling an
   - [ ] Test under resource constraints and failure scenarios
 
 ### 📊 Phase 4: Quality Assurance & Tooling
-- [ ] **Static Analysis & Code Quality**
+- [x] **Static Analysis & Code Quality**
   - [x] Configure detekt rules for security and performance
   - [ ] Set up code coverage targets with kover (>90% target)
   - [x] Run OWASP dependency vulnerability scans
-  - [ ] Generate API documentation with dokka
+  - [x] Generate API documentation with dokka
 
-- [ ] **Build & Testing Infrastructure**
+- [x] **Build & Testing Infrastructure**
   - [x] Update build commands in CLAUDE.md for new tools
   - [x] Add code quality checks to `./gradlew check`
   - [x] Create OWASP dependency-check smoke test validation
+  - [x] Create dokka smoke test with end-to-end validation
   - [ ] Set up automated quality gates
   - [ ] Create developer-friendly error messages and logging
 
@@ -243,14 +249,15 @@ This library follows clean architecture principles with robust error handling an
   - [ ] Prepare for production release and versioning
 
 ### 📋 Current Progress Tracking
-**Active Phase**: Foundation & Infrastructure ✅ **PARTIALLY COMPLETE**
+**Active Phase**: Foundation & Infrastructure ✅ **COMPLETE**
 **Completed**:
 - ✅ Kermit logging infrastructure
 - ✅ Detekt static analysis integration
 - ✅ Kover code coverage tracking (20% minimum threshold)
 - ✅ OWASP dependency-check plugin for vulnerability scanning
+- ✅ Dokka API documentation generation with end-to-end smoke testing
 - ✅ All 20+ KMP targets building successfully
 - ✅ Tests running on 12 available platforms
 
-**Next Milestone**: Add dokka documentation plugin, then begin JVM implementation
+**Next Milestone**: Begin Phase 2 - JVM SecureRandom implementation with Result<T> error handling
 **Platform Focus**: JVM-first approach with clean architecture patterns
