@@ -2,7 +2,8 @@ package com.scottnj.kmp_secure_random
 
 /**
  * watchOS implementation of SecureRandom.
- * TODO: Implement using watchOS secure random APIs.
+ * TODO: Implement using Apple SecRandomCopyBytes API when watchOS compilation issues are resolved.
+ * Current issue: watchOS has different bit width requirements for SecRandomCopyBytes parameters.
  */
 internal class WatchosSecureRandom : SecureRandom {
 
