@@ -24,11 +24,12 @@ kotlin {
     }
 
     // iOS targets
-    listOf(
+    val iosTargets = listOf(
         iosArm64(),
         iosSimulatorArm64(),
         iosX64()
-    ).forEach { iosTarget ->
+    )
+    iosTargets.forEach { iosTarget ->
         iosTarget.binaries.framework {
             baseName = "SecureRandom"
             isStatic = true
@@ -36,19 +37,25 @@ kotlin {
     }
 
     // macOS targets
-    macosX64()
-    macosArm64()
+    val macosTargets = listOf(
+        macosX64(),
+        macosArm64()
+    )
 
     // watchOS targets
-    watchosArm32()
-    watchosArm64()
-    watchosX64()
-    watchosSimulatorArm64()
+    val watchosTargets = listOf(
+        watchosArm32(),
+        watchosArm64(),
+        watchosX64(),
+        watchosSimulatorArm64()
+    )
 
     // tvOS targets
-    tvosArm64()
-    tvosX64()
-    tvosSimulatorArm64()
+    val tvosTargets = listOf(
+        tvosArm64(),
+        tvosX64(),
+        tvosSimulatorArm64()
+    )
 
     // JavaScript/Browser target
     js(IR) {
@@ -91,7 +98,60 @@ kotlin {
         commonTest.dependencies {
             implementation(libs.kotlin.test)
         }
+
+        // Create a custom hierarchy that separates watchOS from other Apple platforms
+        // to avoid metadata compilation conflicts due to different bit width requirements
+
+        val nativeMain by creating {
+            dependsOn(commonMain.get())
+        }
+
+        val appleMain by creating {
+            dependsOn(nativeMain)
+        }
+
+        // iOS, macOS, tvOS use appleMain (can share SecRandomCopyBytes APIs)
+        val iosMain by creating {
+            dependsOn(appleMain)
+        }
+        val macosMain by creating {
+            dependsOn(appleMain)
+        }
+        val tvosMain by creating {
+            dependsOn(appleMain)
+        }
+
+        // watchOS depends directly on commonMain to avoid any bit width conflicts
+        val watchosMain by creating {
+            dependsOn(commonMain.get())
+        }
+
+        // Configure other native platforms
+        val linuxMain by creating {
+            dependsOn(nativeMain)
+        }
+        val mingwMain by creating {
+            dependsOn(nativeMain)
+        }
+        val androidNativeMain by creating {
+            dependsOn(nativeMain)
+        }
+
+        // Connect source sets to actual targets
+        iosTargets.forEach { target ->
+            target.compilations["main"].defaultSourceSet.dependsOn(iosMain)
+        }
+        macosTargets.forEach { target ->
+            target.compilations["main"].defaultSourceSet.dependsOn(macosMain)
+        }
+        tvosTargets.forEach { target ->
+            target.compilations["main"].defaultSourceSet.dependsOn(tvosMain)
+        }
+        watchosTargets.forEach { target ->
+            target.compilations["main"].defaultSourceSet.dependsOn(watchosMain)
+        }
     }
+
 }
 
 android {

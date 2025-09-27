@@ -5,21 +5,22 @@ import kotlinx.cinterop.*
 import platform.Security.*
 import platform.Foundation.*
 import kotlin.experimental.and
-import kotlin.random.Random
 
 @OptIn(ExperimentalForeignApi::class)
 
 /**
- * watchOS implementation of SecureRandom using Apple's SecRandomCopyBytes API.
- * Provides production-ready cryptographically secure random number generation.
- * Note: watchOS requires different bit width handling for SecRandomCopyBytes.
+ * Shared Apple implementation of SecureRandom using Apple's SecRandomCopyBytes API.
+ * Used by iOS, macOS, and tvOS platforms that can share the same API signature.
+ * Note: watchOS is excluded due to different bit width requirements.
  */
-internal class WatchosSecureRandomAdapter private constructor() : SecureRandom {
+internal class AppleSecureRandomAdapter private constructor(
+    private val platformName: String
+) : SecureRandom {
 
-    private val logger = Logger.withTag("WatchosSecureRandomAdapter")
+    private val logger = Logger.withTag("AppleSecureRandomAdapter")
 
     init {
-        logger.d { "Initialized watchOS SecureRandom adapter" }
+        logger.d { "Initialized Apple SecureRandom adapter for $platformName" }
     }
 
     override fun nextBytes(bytes: ByteArray): SecureRandomUnitResult {
@@ -248,12 +249,21 @@ internal class WatchosSecureRandomAdapter private constructor() : SecureRandom {
     }
 
     private inline fun generateSecureBytes(size: Int, action: (ByteArray) -> Unit) {
-        // For watchOS, use arc4random for individual byte generation to avoid metadata conflicts
-        val bytes = ByteArray(size) { _ ->
-            // Generate individual bytes using arc4random
-            (platform.posix.arc4random() and 0xFFu).toByte()
+        memScoped {
+            val buffer = allocArray<UByteVar>(size)
+            val status = SecRandomCopyBytes(kSecRandomDefault, size.convert(), buffer)
+
+            if (status != errSecSuccess) {
+                throw SecureRandomGenerationException(
+                    "SecRandomCopyBytes failed with status: $status"
+                )
+            }
+
+            val bytes = ByteArray(size) { i ->
+                buffer[i].toByte()
+            }
+            action(bytes)
         }
-        action(bytes)
     }
 
     private fun generateIntFromBytes(): Int {
@@ -313,21 +323,26 @@ internal class WatchosSecureRandomAdapter private constructor() : SecureRandom {
 
     companion object {
         private const val MAX_BYTE_ARRAY_SIZE = Int.MAX_VALUE - 8 // Conservative limit
-        private val logger = Logger.withTag("WatchosSecureRandomAdapter")
+        private val logger = Logger.withTag("AppleSecureRandomAdapter")
 
-        fun create(): SecureRandomResult<WatchosSecureRandomAdapter> {
+        fun create(platformName: String): SecureRandomResult<AppleSecureRandomAdapter> {
             return SecureRandomResult.runCatching {
-                // Verify arc4random is available (test generation)
-                val testValue = platform.posix.arc4random()
-                // If we get here without exception, arc4random is working
+                // Verify SecRandomCopyBytes is available
+                memScoped {
+                    val testBuffer = allocArray<UByteVar>(1)
+                    val status = SecRandomCopyBytes(kSecRandomDefault, 1.convert(), testBuffer)
 
-                logger.i { "Successfully created watchOS SecureRandom using arc4random" }
-                WatchosSecureRandomAdapter()
+                    if (status != errSecSuccess) {
+                        logger.e { "SecRandomCopyBytes test failed with status: $status" }
+                        throw SecureRandomInitializationException(
+                            "Failed to initialize Apple SecureRandom: SecRandomCopyBytes not available or failed"
+                        )
+                    }
+                }
+
+                logger.i { "Successfully created Apple SecureRandom using SecRandomCopyBytes for $platformName" }
+                AppleSecureRandomAdapter(platformName)
             }
         }
     }
-}
-
-actual fun createSecureRandom(): SecureRandomResult<SecureRandom> {
-    return WatchosSecureRandomAdapter.create().map { it as SecureRandom }
 }
