@@ -6,6 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 This is a Kotlin Multiplatform (KMP) library for secure random number generation. The library targets ALL possible KMP platforms including JVM, Android, iOS, macOS, watchOS, tvOS, JavaScript, WASM, Linux, Windows, and Android Native variants. This is a pure library project with no UI components.
 
+**Repository**: https://github.com/scottnj/KMP-Secure-Random
+
 ## Project Structure
 
 - `/shared` - The main and only module containing the secure random library implementation

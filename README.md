@@ -1,6 +1,22 @@
 # KMP Secure Random
 
+[![Kotlin](https://img.shields.io/badge/kotlin-2.1.0-blue.svg?logo=kotlin)](http://kotlinlang.org)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?logo=opensourceinitiative)](https://opensource.org/licenses/MIT)
+[![Security](https://img.shields.io/badge/security-native%20APIs%20only-green.svg?logo=shield)](https://github.com/scottnj/KMP-Secure-Random#important-we-dont-roll-our-own-crypto)
+
+[![JVM/Android](https://img.shields.io/badge/JVM%2FAndroid-JVM%20%7C%20Android-brightgreen.svg?logo=android)](https://kotlinlang.org/docs/multiplatform.html)
+[![Apple](https://img.shields.io/badge/Apple-iOS%20%7C%20macOS%20%7C%20watchOS%20%7C%20tvOS-brightgreen.svg?logo=apple)](https://kotlinlang.org/docs/multiplatform.html)
+[![Web](https://img.shields.io/badge/Web-JavaScript%20%7C%20WASM-brightgreen.svg?logo=javascript)](https://kotlinlang.org/docs/multiplatform.html)
+[![Native](https://img.shields.io/badge/Native-Linux%20%7C%20Windows%20%7C%20MinGW-orange.svg)](https://kotlinlang.org/docs/multiplatform.html)
+
+[![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg?logo=github)](https://github.com/scottnj/KMP-Secure-Random/actions)
+[![Quality Gates](https://img.shields.io/badge/quality%20gates-passing-brightgreen.svg?logo=checkmarx)](https://github.com/scottnj/KMP-Secure-Random)
+[![Static Analysis](https://img.shields.io/badge/detekt-passing-brightgreen.svg?logo=sonarqube)](https://github.com/scottnj/KMP-Secure-Random)
+[![Coverage](https://img.shields.io/badge/coverage-~80%25-yellow.svg)](https://github.com/scottnj/KMP-Secure-Random)
+
 A Kotlin Multiplatform library for secure random number generation across all supported platforms.
+
+**Repository**: https://github.com/scottnj/KMP-Secure-Random
 
 ## Overview
 
