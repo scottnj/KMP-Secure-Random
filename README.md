@@ -51,7 +51,7 @@ This library **does NOT implement custom cryptographic algorithms**. Instead, it
 | WASM-JS (D8) | ⚠️ **Testing Only** | `WasmJsSecureRandomAdapter` using Math.random fallback | Statistical quality only |
 | Linux x64 | ✅ **Production Ready** | `LinuxSecureRandomAdapter` using `getrandom()` + `/dev/urandom` fallback | Cryptographically secure |
 | Linux ARM64 | ✅ **Production Ready** | `LinuxSecureRandomAdapter` using `getrandom()` + `/dev/urandom` fallback | Cryptographically secure |
-| Windows (MinGW) | ✅ **Production Ready** | `WindowsSecureRandom` using `CryptGenRandom` API | Cryptographically secure |
+| Windows (MinGW) | ✅ **Production Ready** | `WindowsSecureRandom` using `CryptGenRandom` API - **GitHub Actions Validated** | Cryptographically secure |
 | Android Native (x64/x86/arm32/arm64) | 🔲 **Planned** | Direct NDK random API access | Cryptographically secure |
 
 ### WASM-JS Environment Notes
