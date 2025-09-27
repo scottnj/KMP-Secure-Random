@@ -258,10 +258,31 @@ This library follows clean architecture principles with robust error handling an
   - [x] Handle browser compatibility issues ✅ **COMPLETE**
   - [x] Create `WasmJsSecureRandomAdapter` with environment detection ✅ **COMPLETE**
 
-- [ ] **Native Platforms (Linux, Windows, etc.)**
-  - [ ] Implement OS-specific secure random sources
-  - [ ] Handle platform-specific error conditions
-  - [ ] Test cross-compilation and native builds
+- [ ] **Linux Platform**
+  - [ ] Implement `LinuxSecureRandomAdapter` using `/dev/urandom` and `getrandom()` syscall
+  - [ ] Add fallback mechanisms for older Linux kernels (pre-3.17 without getrandom)
+  - [ ] Handle Linux-specific error conditions (EAGAIN, EINTR)
+  - [ ] Test cross-compilation for Linux targets
+
+- [ ] **Windows Platform**
+  - [ ] Implement `WindowsSecureRandomAdapter` using `BCryptGenRandom` (Cryptography API: Next Generation)
+  - [ ] Add fallback to `CryptGenRandom` for older Windows versions
+  - [ ] Handle Windows-specific error conditions and COM initialization
+  - [ ] Test cross-compilation for Windows targets
+
+- [ ] **MinGW Platform**
+  - [ ] Implement `MinGwSecureRandomAdapter` with Windows API compatibility
+  - [ ] Handle MinGW-specific linking and library requirements
+  - [ ] Test MinGW cross-compilation and compatibility
+
+- [ ] **Android Native Platforms**
+  - [ ] Implement `AndroidNativeX64SecureRandomAdapter` for androidNativeX64
+  - [ ] Implement `AndroidNativeX86SecureRandomAdapter` for androidNativeX86
+  - [ ] Implement `AndroidNativeArm32SecureRandomAdapter` for androidNativeArm32
+  - [ ] Implement `AndroidNativeArm64SecureRandomAdapter` for androidNativeArm64
+  - [ ] Use direct native random API access bypassing Android Runtime
+  - [ ] Handle Android NDK-specific requirements and API levels
+  - [ ] Test all Android Native variants with cross-compilation
 
 - [ ] **Enhanced Statistical Testing**
   - [ ] Implement full NIST SP 800-22 test suite (15 statistical tests)
