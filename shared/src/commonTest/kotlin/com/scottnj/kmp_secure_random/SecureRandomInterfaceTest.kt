@@ -47,136 +47,134 @@ class SecureRandomInterfaceTest {
     }
 
     @Test
-    fun testNextBytesArrayCurrentlyThrows() {
-        logger.d { "Testing nextBytes(ByteArray) current placeholder behavior" }
+    fun testNextBytesArrayFunctionality() {
+        logger.d { "Testing nextBytes(ByteArray) functionality" }
 
         val secureRandom = createSecureRandom().getOrThrow()
         val bytes = ByteArray(10)
+        val originalBytes = bytes.copyOf()
 
-        // Current implementation is TODO, so it should throw
-        assertFailsWith<NotImplementedError> {
-            secureRandom.nextBytes(bytes)
-        }
+        val result = secureRandom.nextBytes(bytes)
+        assertTrue(result.isSuccess, "nextBytes should succeed")
+        assertFalse(bytes.contentEquals(originalBytes), "Bytes should be modified with random data")
     }
 
     @Test
-    fun testNextIntCurrentlyThrows() {
-        logger.d { "Testing nextInt() current placeholder behavior" }
+    fun testNextIntFunctionality() {
+        logger.d { "Testing nextInt() functionality" }
 
         val secureRandom = createSecureRandom().getOrThrow()
 
-        // Current implementation is TODO, so it should throw
-        assertFailsWith<NotImplementedError> {
-            secureRandom.nextInt()
-        }
+        val result = secureRandom.nextInt()
+        assertTrue(result.isSuccess, "nextInt should succeed")
+        assertNotNull(result.getOrNull(), "nextInt should return a value")
     }
 
     @Test
-    fun testNextIntBoundCurrentlyThrows() {
-        logger.d { "Testing nextInt(bound) current placeholder behavior" }
+    fun testNextIntBoundFunctionality() {
+        logger.d { "Testing nextInt(bound) functionality" }
 
         val secureRandom = createSecureRandom().getOrThrow()
 
-        // Current implementation is TODO, so it should throw
-        assertFailsWith<NotImplementedError> {
-            secureRandom.nextInt(100)
-        }
+        val result = secureRandom.nextInt(100)
+        assertTrue(result.isSuccess, "nextInt(bound) should succeed")
+        val value = result.getOrThrow()
+        assertTrue(value >= 0 && value < 100, "Value $value should be in range [0, 100)")
     }
 
     @Test
-    fun testNextIntRangeCurrentlyThrows() {
-        logger.d { "Testing nextInt(min, max) current placeholder behavior" }
+    fun testNextIntRangeFunctionality() {
+        logger.d { "Testing nextInt(min, max) functionality" }
 
         val secureRandom = createSecureRandom().getOrThrow()
 
-        // Current implementation is TODO, so it should throw
-        assertFailsWith<NotImplementedError> {
-            secureRandom.nextInt(10, 20)
-        }
+        val result = secureRandom.nextInt(10, 20)
+        assertTrue(result.isSuccess, "nextInt(min, max) should succeed")
+        val value = result.getOrThrow()
+        assertTrue(value >= 10 && value < 20, "Value $value should be in range [10, 20)")
     }
 
     @Test
-    fun testNextLongCurrentlyThrows() {
-        logger.d { "Testing nextLong() current placeholder behavior" }
+    fun testNextLongFunctionality() {
+        logger.d { "Testing nextLong() functionality" }
 
         val secureRandom = createSecureRandom().getOrThrow()
 
-        // Current implementation is TODO, so it should throw
-        assertFailsWith<NotImplementedError> {
-            secureRandom.nextLong()
-        }
+        val result = secureRandom.nextLong()
+        assertTrue(result.isSuccess, "nextLong should succeed")
+        assertNotNull(result.getOrNull(), "nextLong should return a value")
     }
 
     @Test
-    fun testNextLongBoundCurrentlyThrows() {
-        logger.d { "Testing nextLong(bound) current placeholder behavior" }
+    fun testNextLongBoundFunctionality() {
+        logger.d { "Testing nextLong(bound) functionality" }
 
         val secureRandom = createSecureRandom().getOrThrow()
 
-        // Current implementation is TODO, so it should throw
-        assertFailsWith<NotImplementedError> {
-            secureRandom.nextLong(100L)
-        }
+        val result = secureRandom.nextLong(100L)
+        assertTrue(result.isSuccess, "nextLong(bound) should succeed")
+        val value = result.getOrThrow()
+        assertTrue(value >= 0L && value < 100L, "Value $value should be in range [0, 100)")
     }
 
     @Test
-    fun testNextLongRangeCurrentlyThrows() {
-        logger.d { "Testing nextLong(min, max) current placeholder behavior" }
+    fun testNextLongRangeFunctionality() {
+        logger.d { "Testing nextLong(min, max) functionality" }
 
         val secureRandom = createSecureRandom().getOrThrow()
 
-        // Current implementation is TODO, so it should throw
-        assertFailsWith<NotImplementedError> {
-            secureRandom.nextLong(10L, 20L)
-        }
+        val result = secureRandom.nextLong(10L, 20L)
+        assertTrue(result.isSuccess, "nextLong(min, max) should succeed")
+        val value = result.getOrThrow()
+        assertTrue(value >= 10L && value < 20L, "Value $value should be in range [10, 20)")
     }
 
     @Test
-    fun testNextBooleanCurrentlyThrows() {
-        logger.d { "Testing nextBoolean() current placeholder behavior" }
+    fun testNextBooleanFunctionality() {
+        logger.d { "Testing nextBoolean() functionality" }
 
         val secureRandom = createSecureRandom().getOrThrow()
 
-        // Current implementation is TODO, so it should throw
-        assertFailsWith<NotImplementedError> {
-            secureRandom.nextBoolean()
-        }
+        val result = secureRandom.nextBoolean()
+        assertTrue(result.isSuccess, "nextBoolean should succeed")
+        val value = result.getOrThrow()
+        assertTrue(value == true || value == false, "nextBoolean should return true or false")
     }
 
     @Test
-    fun testNextDoubleCurrentlyThrows() {
-        logger.d { "Testing nextDouble() current placeholder behavior" }
+    fun testNextDoubleFunctionality() {
+        logger.d { "Testing nextDouble() functionality" }
 
         val secureRandom = createSecureRandom().getOrThrow()
 
-        // Current implementation is TODO, so it should throw
-        assertFailsWith<NotImplementedError> {
-            secureRandom.nextDouble()
-        }
+        val result = secureRandom.nextDouble()
+        assertTrue(result.isSuccess, "nextDouble should succeed")
+        val value = result.getOrThrow()
+        assertTrue(value >= 0.0 && value < 1.0, "Value $value should be in range [0.0, 1.0)")
     }
 
     @Test
-    fun testNextFloatCurrentlyThrows() {
-        logger.d { "Testing nextFloat() current placeholder behavior" }
+    fun testNextFloatFunctionality() {
+        logger.d { "Testing nextFloat() functionality" }
 
         val secureRandom = createSecureRandom().getOrThrow()
 
-        // Current implementation is TODO, so it should throw
-        assertFailsWith<NotImplementedError> {
-            secureRandom.nextFloat()
-        }
+        val result = secureRandom.nextFloat()
+        assertTrue(result.isSuccess, "nextFloat should succeed")
+        val value = result.getOrThrow()
+        assertTrue(value >= 0.0f && value < 1.0f, "Value $value should be in range [0.0, 1.0)")
     }
 
     @Test
-    fun testNextBytesSizeCurrentlyThrows() {
-        logger.d { "Testing nextBytes(size) current placeholder behavior" }
+    fun testNextBytesSizeFunctionality() {
+        logger.d { "Testing nextBytes(size) functionality" }
 
         val secureRandom = createSecureRandom().getOrThrow()
 
-        // Current implementation is TODO, so it should throw
-        assertFailsWith<NotImplementedError> {
-            secureRandom.nextBytes(10)
-        }
+        val result = secureRandom.nextBytes(10)
+        assertTrue(result.isSuccess, "nextBytes(size) should succeed")
+        val bytes = result.getOrThrow()
+        assertEquals(10, bytes.size, "Returned array should have requested size")
     }
 
     @Test
@@ -185,29 +183,26 @@ class SecureRandomInterfaceTest {
 
         val secureRandom = createSecureRandom().getOrThrow()
 
-        // Test that we can call all methods without compilation errors
-        // They will throw NotImplementedError but that's expected for now
-        val methods = listOf(
-            { secureRandom.nextBytes(ByteArray(1)) },
-            { secureRandom.nextInt() },
-            { secureRandom.nextInt(1) },
-            { secureRandom.nextInt(0, 1) },
-            { secureRandom.nextLong() },
-            { secureRandom.nextLong(1L) },
-            { secureRandom.nextLong(0L, 1L) },
-            { secureRandom.nextBoolean() },
-            { secureRandom.nextDouble() },
-            { secureRandom.nextFloat() },
-            { secureRandom.nextBytes(1) }
+        // Test that we can call all methods and they return success results
+        val methodResults = listOf(
+            secureRandom.nextBytes(ByteArray(1)),
+            secureRandom.nextInt().map { Unit },
+            secureRandom.nextInt(1).map { Unit },
+            secureRandom.nextInt(0, 1).map { Unit },
+            secureRandom.nextLong().map { Unit },
+            secureRandom.nextLong(1L).map { Unit },
+            secureRandom.nextLong(0L, 1L).map { Unit },
+            secureRandom.nextBoolean().map { Unit },
+            secureRandom.nextDouble().map { Unit },
+            secureRandom.nextFloat().map { Unit },
+            secureRandom.nextBytes(1).map { Unit }
         )
 
-        methods.forEach { method ->
-            assertFailsWith<NotImplementedError> {
-                method()
-            }
+        methodResults.forEach { result ->
+            assertTrue(result.isSuccess, "All SecureRandom methods should succeed")
         }
 
-        logger.i { "All ${methods.size} SecureRandom methods are properly defined" }
+        logger.i { "All ${methodResults.size} SecureRandom methods are properly defined" }
     }
 
     @Test

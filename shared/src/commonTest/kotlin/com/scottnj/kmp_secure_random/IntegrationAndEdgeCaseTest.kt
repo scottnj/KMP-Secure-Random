@@ -267,14 +267,14 @@ class IntegrationAndEdgeCaseTest {
         instances.forEach { instance ->
             assertTrue(instance is SecureRandom, "All instances must implement SecureRandom")
 
-            // Test that all methods exist and throw NotImplementedError consistently
-            assertFailsWith<NotImplementedError> { instance.nextInt() }
-            assertFailsWith<NotImplementedError> { instance.nextLong() }
-            assertFailsWith<NotImplementedError> { instance.nextBoolean() }
-            assertFailsWith<NotImplementedError> { instance.nextDouble() }
-            assertFailsWith<NotImplementedError> { instance.nextFloat() }
-            assertFailsWith<NotImplementedError> { instance.nextBytes(10) }
-            assertFailsWith<NotImplementedError> { instance.nextBytes(ByteArray(10)) }
+            // Test that all methods exist and return success results
+            assertTrue(instance.nextInt().isSuccess, "nextInt should succeed")
+            assertTrue(instance.nextLong().isSuccess, "nextLong should succeed")
+            assertTrue(instance.nextBoolean().isSuccess, "nextBoolean should succeed")
+            assertTrue(instance.nextDouble().isSuccess, "nextDouble should succeed")
+            assertTrue(instance.nextFloat().isSuccess, "nextFloat should succeed")
+            assertTrue(instance.nextBytes(10).isSuccess, "nextBytes(size) should succeed")
+            assertTrue(instance.nextBytes(ByteArray(10)).isSuccess, "nextBytes(array) should succeed")
         }
     }
 
@@ -332,17 +332,22 @@ class IntegrationAndEdgeCaseTest {
             val secureRandom = secureRandomResult.getOrThrow()
             logger.i { "Created ${secureRandom::class.simpleName} instance" }
 
-            // Step 3: Test error handling (current implementation throws)
-            try {
-                secureRandom.nextInt(100)
-                "Should not reach here"
-            } catch (e: NotImplementedError) {
-                "Implementation pending - this is expected"
+            // Step 3: Test actual functionality works
+            val intResult = secureRandom.nextInt(100)
+            if (intResult.isSuccess) {
+                val value = intResult.getOrThrow()
+                if (value >= 0 && value < 100) {
+                    "Implementation working correctly"
+                } else {
+                    "Implementation error: value out of range"
+                }
+            } else {
+                "Implementation failed: ${intResult.exceptionOrNull()?.message}"
             }
         }
 
         assertTrue(workflow.isSuccess)
-        assertEquals("Implementation pending - this is expected", workflow.getOrNull())
+        assertEquals("Implementation working correctly", workflow.getOrNull())
 
         logger.i { "Library integration smoke test completed successfully" }
     }
