@@ -237,6 +237,51 @@ jobs:
             shared/build/reports/tests/
           retention-days: 30
 
+  # Windows (MinGW) platform testing
+  windows-tests:
+    name: Windows (MinGW) Tests
+    needs: quality-gates
+    strategy:
+      matrix:
+        os: [windows-latest, windows-2022]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Setup MinGW
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          install: >-
+            mingw-w64-x86_64-gcc
+            mingw-w64-x86_64-binutils
+            make
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Run MinGW X64 Tests
+        run: ./gradlew mingwX64Test --info
+        shell: cmd
+
+      - name: Upload Windows Test Results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: windows-test-results-${{ matrix.os }}
+          path: |
+            shared/build/test-results/mingwX64Test/
+            shared/build/reports/tests/mingwX64Test/
+          retention-days: 30
+
   # Security and dependency scanning
   security-scan:
     name: Security Scan
@@ -272,7 +317,7 @@ jobs:
   # Final status check
   ci-success:
     name: CI Success
-    needs: [quality-gates, linux-tests, cross-platform-build, jvm-tests, js-tests, android-tests, security-scan]
+    needs: [quality-gates, linux-tests, cross-platform-build, jvm-tests, js-tests, android-tests, windows-tests, security-scan]
     runs-on: ubuntu-latest
     if: always()
     steps:
@@ -284,6 +329,7 @@ jobs:
                 "${{ needs.jvm-tests.result }}" == "success" &&
                 "${{ needs.js-tests.result }}" == "success" &&
                 "${{ needs.android-tests.result }}" == "success" &&
+                "${{ needs.windows-tests.result }}" == "success" &&
                 "${{ needs.security-scan.result }}" == "success" ]]; then
             echo "✅ All CI checks passed!"
             exit 0
@@ -295,6 +341,7 @@ jobs:
             echo "JVM Tests: ${{ needs.jvm-tests.result }}"
             echo "JS Tests: ${{ needs.js-tests.result }}"
             echo "Android Tests: ${{ needs.android-tests.result }}"
+            echo "Windows Tests: ${{ needs.windows-tests.result }}"
             echo "Security Scan: ${{ needs.security-scan.result }}"
             exit 1
           fi

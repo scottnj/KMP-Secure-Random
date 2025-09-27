@@ -1,55 +1,22 @@
 package com.scottnj.kmp_secure_random
 
+import co.touchlab.kermit.Logger
+
 /**
- * Windows (MinGW) implementation of SecureRandom.
- * TODO: Implement using Windows secure random APIs (CryptGenRandom, BCryptGenRandom).
+ * Windows (MinGW) platform entry point for SecureRandom.
+ * Uses WindowsSecureRandom which provides cryptographically secure
+ * random number generation via Windows CryptGenRandom API.
  */
-internal class MingwSecureRandom : SecureRandom {
-
-    override fun nextBytes(bytes: ByteArray): SecureRandomUnitResult {
-        TODO("Windows SecureRandom implementation not yet implemented")
-    }
-
-    override fun nextInt(): SecureRandomResult<Int> {
-        TODO("Windows SecureRandom implementation not yet implemented")
-    }
-
-    override fun nextInt(bound: Int): SecureRandomResult<Int> {
-        TODO("Windows SecureRandom implementation not yet implemented")
-    }
-
-    override fun nextInt(min: Int, max: Int): SecureRandomResult<Int> {
-        TODO("Windows SecureRandom implementation not yet implemented")
-    }
-
-    override fun nextLong(): SecureRandomResult<Long> {
-        TODO("Windows SecureRandom implementation not yet implemented")
-    }
-
-    override fun nextLong(bound: Long): SecureRandomResult<Long> {
-        TODO("Windows SecureRandom implementation not yet implemented")
-    }
-
-    override fun nextLong(min: Long, max: Long): SecureRandomResult<Long> {
-        TODO("Windows SecureRandom implementation not yet implemented")
-    }
-
-    override fun nextBoolean(): SecureRandomResult<Boolean> {
-        TODO("Windows SecureRandom implementation not yet implemented")
-    }
-
-    override fun nextDouble(): SecureRandomResult<Double> {
-        TODO("Windows SecureRandom implementation not yet implemented")
-    }
-
-    override fun nextFloat(): SecureRandomResult<Float> {
-        TODO("Windows SecureRandom implementation not yet implemented")
-    }
-
-    override fun nextBytes(size: Int): SecureRandomResult<ByteArray> {
-        TODO("Windows SecureRandom implementation not yet implemented")
+actual fun createSecureRandom(): SecureRandomResult<SecureRandom> {
+    val logger = Logger.withTag("SecureRandom")
+    return try {
+        val secureRandom = WindowsSecureRandom()
+        logger.i { "Windows SecureRandom created successfully" }
+        SecureRandomResult.success(secureRandom)
+    } catch (e: Exception) {
+        logger.e(e) { "Failed to create Windows SecureRandom" }
+        SecureRandomResult.failure(
+            SecureRandomInitializationException("Windows SecureRandom initialization failed", e)
+        )
     }
 }
-
-actual fun createSecureRandom(): SecureRandomResult<SecureRandom> =
-    SecureRandomResult.success(MingwSecureRandom())

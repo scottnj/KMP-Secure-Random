@@ -32,6 +32,7 @@ This library **does NOT implement custom cryptographic algorithms**. Instead, it
 - **JavaScript**: Uses Web Crypto API (`crypto.getRandomValues()`) and Node.js crypto (`crypto.randomBytes()`)
 - **WASM-JS**: Uses Web Crypto API in browsers, with statistical fallback for testing environments
 - **Linux**: Uses `getrandom()` syscall (Linux 3.17+) with `/dev/urandom` fallback
+- **Windows**: Uses Windows `CryptGenRandom` API for cryptographically secure randomness
 
 **Goal**: Make existing, proven secure random implementations easily accessible across all KMP platforms with a consistent, type-safe API.
 
@@ -50,8 +51,7 @@ This library **does NOT implement custom cryptographic algorithms**. Instead, it
 | WASM-JS (D8) | ⚠️ **Testing Only** | `WasmJsSecureRandomAdapter` using Math.random fallback | Statistical quality only |
 | Linux x64 | ✅ **Production Ready** | `LinuxSecureRandomAdapter` using `getrandom()` + `/dev/urandom` fallback | Cryptographically secure |
 | Linux ARM64 | ✅ **Production Ready** | `LinuxSecureRandomAdapter` using `getrandom()` + `/dev/urandom` fallback | Cryptographically secure |
-| Windows | 🔲 **Planned** | `BCryptGenRandom` with `CryptGenRandom` fallback | Cryptographically secure |
-| MinGW | 🔲 **Planned** | Windows API compatibility | Cryptographically secure |
+| Windows (MinGW) | ✅ **Production Ready** | `WindowsSecureRandom` using `CryptGenRandom` API | Cryptographically secure |
 | Android Native (x64/x86/arm32/arm64) | 🔲 **Planned** | Direct NDK random API access | Cryptographically secure |
 
 ### WASM-JS Environment Notes
