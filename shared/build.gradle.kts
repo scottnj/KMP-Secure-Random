@@ -150,6 +150,19 @@ kotlin {
         watchosTargets.forEach { target ->
             target.compilations["main"].defaultSourceSet.dependsOn(watchosMain)
         }
+
+        // Connect Linux targets
+        linuxX64().compilations["main"].defaultSourceSet.dependsOn(linuxMain)
+        linuxArm64().compilations["main"].defaultSourceSet.dependsOn(linuxMain)
+
+        // Connect Windows targets
+        mingwX64().compilations["main"].defaultSourceSet.dependsOn(mingwMain)
+
+        // Connect Android Native targets
+        androidNativeArm32().compilations["main"].defaultSourceSet.dependsOn(androidNativeMain)
+        androidNativeArm64().compilations["main"].defaultSourceSet.dependsOn(androidNativeMain)
+        androidNativeX86().compilations["main"].defaultSourceSet.dependsOn(androidNativeMain)
+        androidNativeX64().compilations["main"].defaultSourceSet.dependsOn(androidNativeMain)
     }
 
 }
