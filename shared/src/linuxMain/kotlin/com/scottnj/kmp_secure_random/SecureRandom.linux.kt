@@ -28,8 +28,105 @@ internal class LinuxSecureRandomAdapter private constructor() : SecureRandom {
         fun create(): SecureRandomResult<LinuxSecureRandomAdapter> {
             return SecureRandomResult.runCatching {
                 val adapter = LinuxSecureRandomAdapter()
-                adapter.logger.d { "Initialized Linux SecureRandom adapter" }
+                adapter.logger.i { "Creating Linux SecureRandom adapter..." }
+
+                // Test initialization with diagnostic checks
+                adapter.performInitializationChecks()
+
+                adapter.logger.i { "Linux SecureRandom adapter initialized successfully" }
                 adapter
+            }
+        }
+    }
+
+    /**
+     * Performs diagnostic checks during initialization to help debug CI issues.
+     */
+    private fun performInitializationChecks() {
+        logger.i { "Performing Linux environment diagnostic checks..." }
+
+        // Check /dev/urandom accessibility
+        try {
+            val testFile = fopen("/dev/urandom", "rb")
+            if (testFile != null) {
+                logger.i { "✅ /dev/urandom is accessible" }
+                fclose(testFile)
+            } else {
+                logger.e { "❌ Cannot open /dev/urandom: errno $errno" }
+                throw SecureRandomInitializationException("Cannot access /dev/urandom: errno $errno")
+            }
+        } catch (e: Exception) {
+            logger.e(e) { "❌ /dev/urandom accessibility check failed" }
+            throw e
+        }
+
+        // Test getrandom() availability
+        try {
+            logger.i { "Testing getrandom() syscall availability..." }
+            val testBytes = ByteArray(1)
+            val available = tryGetrandomDiagnostic(testBytes)
+            if (available) {
+                logger.i { "✅ getrandom() syscall is available and working" }
+            } else {
+                logger.i { "ℹ️ getrandom() syscall not available, will use /dev/urandom fallback" }
+            }
+        } catch (e: Exception) {
+            logger.w(e) { "⚠️ getrandom() test failed, will use /dev/urandom fallback" }
+        }
+
+        // Test small random generation
+        try {
+            logger.i { "Testing small random byte generation..." }
+            val testBytes = ByteArray(4)
+            fillBytesSecurely(testBytes)
+            logger.i { "✅ Successfully generated 4 test bytes" }
+        } catch (e: Exception) {
+            logger.e(e) { "❌ Failed to generate test bytes" }
+            throw e
+        }
+
+        logger.i { "🎯 All Linux environment checks passed!" }
+    }
+
+    /**
+     * Diagnostic version of tryGetrandom that provides more detailed logging.
+     */
+    private fun tryGetrandomDiagnostic(bytes: ByteArray): Boolean {
+        return memScoped {
+            val buffer = allocArray<ByteVar>(bytes.size)
+
+            try {
+                logger.d { "Attempting getrandom() syscall with ${bytes.size} bytes..." }
+                val result = syscall(SYS_GETRANDOM, buffer, bytes.size.convert<size_t>(), 0)
+                logger.d { "getrandom() returned: $result (expected: ${bytes.size})" }
+
+                when {
+                    result == bytes.size.toLong() -> {
+                        logger.d { "✅ getrandom() successful" }
+                        return true
+                    }
+                    result == -1L -> {
+                        val error = errno
+                        logger.d { "getrandom() failed with errno: $error" }
+                        when (error) {
+                            ENOSYS -> {
+                                logger.d { "getrandom() not available (ENOSYS) - normal for older kernels" }
+                                return false
+                            }
+                            else -> {
+                                logger.w { "getrandom() failed with errno $error" }
+                                return false
+                            }
+                        }
+                    }
+                    else -> {
+                        logger.w { "getrandom() returned unexpected value: $result" }
+                        return false
+                    }
+                }
+            } catch (e: Exception) {
+                logger.w(e) { "getrandom() syscall threw exception" }
+                return false
             }
         }
     }
@@ -198,17 +295,24 @@ internal class LinuxSecureRandomAdapter private constructor() : SecureRandom {
      * Linux-specific APIs with proper error handling and fallback mechanisms.
      */
     private fun fillBytesSecurely(bytes: ByteArray) {
+        logger.v { "Filling ${bytes.size} bytes securely..." }
+
         try {
             // Try getrandom() syscall first (Linux 3.17+)
+            logger.v { "Attempting getrandom() syscall..." }
             if (tryGetrandom(bytes)) {
+                logger.v { "Successfully used getrandom() for ${bytes.size} bytes" }
                 return
             }
+            logger.v { "getrandom() not available, falling back to /dev/urandom" }
         } catch (e: Exception) {
             logger.w(e) { "getrandom() failed, falling back to /dev/urandom" }
         }
 
         // Fallback to /dev/urandom for older kernels or when getrandom() fails
+        logger.v { "Using /dev/urandom fallback..." }
         readFromDevUrandom(bytes)
+        logger.v { "Successfully used /dev/urandom for ${bytes.size} bytes" }
     }
 
     /**
@@ -282,19 +386,32 @@ internal class LinuxSecureRandomAdapter private constructor() : SecureRandom {
      * Reads random bytes from /dev/urandom with proper error handling.
      */
     private fun readFromDevUrandom(bytes: ByteArray) {
+        logger.v { "Opening /dev/urandom for ${bytes.size} bytes..." }
+
         val file = fopen("/dev/urandom", "rb")
-            ?: throw SecureRandomInitializationException(
-                "Failed to open /dev/urandom: errno $errno"
+        if (file == null) {
+            val errorCode = errno
+            logger.e { "Failed to open /dev/urandom: errno $errorCode" }
+            throw SecureRandomInitializationException(
+                "Failed to open /dev/urandom: errno $errorCode"
             )
+        }
+
+        logger.v { "Successfully opened /dev/urandom" }
 
         try {
             memScoped {
                 val buffer = allocArray<ByteVar>(bytes.size)
+                logger.v { "Reading ${bytes.size} bytes from /dev/urandom..." }
                 val bytesRead = fread(buffer, 1u, bytes.size.convert(), file)
 
+                logger.v { "Read $bytesRead bytes from /dev/urandom (expected: ${bytes.size})" }
+
                 if (bytesRead.toInt() != bytes.size) {
+                    val errorCode = errno
+                    logger.e { "Failed to read ${bytes.size} bytes from /dev/urandom, got $bytesRead, errno: $errorCode" }
                     throw SecureRandomGenerationException(
-                        "Failed to read ${bytes.size} bytes from /dev/urandom, got $bytesRead"
+                        "Failed to read ${bytes.size} bytes from /dev/urandom, got $bytesRead, errno: $errorCode"
                     )
                 }
 
@@ -303,14 +420,35 @@ internal class LinuxSecureRandomAdapter private constructor() : SecureRandom {
                     bytes[i] = buffer[i]
                 }
 
-                logger.v { "Successfully read ${bytes.size} bytes from /dev/urandom" }
+                logger.v { "Successfully read and copied ${bytes.size} bytes from /dev/urandom" }
             }
         } finally {
+            logger.v { "Closing /dev/urandom file handle" }
             fclose(file)
         }
     }
 }
 
 actual fun createSecureRandom(): SecureRandomResult<SecureRandom> {
-    return LinuxSecureRandomAdapter.create().map { it as SecureRandom }
+    val logger = Logger.withTag("SecureRandom")
+    logger.i { "Creating Linux SecureRandom..." }
+
+    return try {
+        val result = LinuxSecureRandomAdapter.create()
+        when (result) {
+            is SecureRandomResult.Success -> {
+                logger.i { "✅ Linux SecureRandom created successfully" }
+                SecureRandomResult.success(result.value as SecureRandom)
+            }
+            is SecureRandomResult.Failure -> {
+                logger.e { "❌ Failed to create Linux SecureRandom: ${result.exception.message}" }
+                SecureRandomResult.failure(result.exception)
+            }
+        }
+    } catch (e: Exception) {
+        logger.e(e) { "❌ Exception during Linux SecureRandom creation" }
+        SecureRandomResult.failure(
+            SecureRandomInitializationException("Linux SecureRandom creation failed", e)
+        )
+    }
 }
