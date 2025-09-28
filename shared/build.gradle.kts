@@ -133,8 +133,18 @@ kotlin {
         val mingwMain by creating {
             dependsOn(nativeMain)
         }
-        val androidNativeMain by creating {
-            dependsOn(nativeMain)
+        // Android Native per-architecture source sets (isolated like watchOS to avoid metadata conflicts)
+        val androidNativeArm32Main by getting {
+            dependsOn(commonMain.get())
+        }
+        val androidNativeArm64Main by getting {
+            dependsOn(commonMain.get())
+        }
+        val androidNativeX86Main by getting {
+            dependsOn(commonMain.get())
+        }
+        val androidNativeX64Main by getting {
+            dependsOn(commonMain.get())
         }
 
         // Connect source sets to actual targets
@@ -158,11 +168,11 @@ kotlin {
         // Connect Windows targets
         mingwX64().compilations["main"].defaultSourceSet.dependsOn(mingwMain)
 
-        // Connect Android Native targets
-        androidNativeArm32().compilations["main"].defaultSourceSet.dependsOn(androidNativeMain)
-        androidNativeArm64().compilations["main"].defaultSourceSet.dependsOn(androidNativeMain)
-        androidNativeX86().compilations["main"].defaultSourceSet.dependsOn(androidNativeMain)
-        androidNativeX64().compilations["main"].defaultSourceSet.dependsOn(androidNativeMain)
+        // Connect Android Native targets to per-architecture source sets
+        androidNativeArm32().compilations["main"].defaultSourceSet.dependsOn(androidNativeArm32Main)
+        androidNativeArm64().compilations["main"].defaultSourceSet.dependsOn(androidNativeArm64Main)
+        androidNativeX86().compilations["main"].defaultSourceSet.dependsOn(androidNativeX86Main)
+        androidNativeX64().compilations["main"].defaultSourceSet.dependsOn(androidNativeX64Main)
     }
 
 }
