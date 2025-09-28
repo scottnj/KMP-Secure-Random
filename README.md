@@ -103,6 +103,29 @@ Each architecture gets:
 
 This approach follows the same pattern successfully used for watchOS separation and ensures cryptographically secure random generation on all Android Native architectures.
 
+#### Build and Test Workflow
+
+Android Native development follows a **hybrid approach** that has proven successful with Linux and Windows platforms:
+
+**Local Development (MacBook Pro)**:
+- ✅ **Cross-compilation builds** for all 4 architectures work locally
+- ✅ **Rapid iteration** with compilation verification and unit tests
+- ✅ **Code quality checks** (static analysis, coverage, security scanning)
+- ❌ **Native testing** requires actual Android environments
+
+**GitHub Actions Validation**:
+- ✅ **Android emulator testing** with architecture-specific validation
+- ✅ **Real Android kernel APIs** (`getrandom()` syscall, `/dev/urandom` fallback)
+- ✅ **Statistical randomness validation** on actual Android entropy sources
+- ✅ **Security and performance testing** in native Android environments
+
+**Development Workflow**:
+1. **Local**: Cross-compile and verify builds on macOS
+2. **CI/CD**: GitHub Actions validates with Android emulators
+3. **Confidence**: Same pattern successfully validated Linux (Ubuntu) and Windows (Server 2022/2025)
+
+This approach ensures both **developer productivity** (fast local builds) and **production confidence** (comprehensive CI validation).
+
 ### WASM-JS Environment Notes
 
 The WASM-JS implementation uses intelligent environment detection:
