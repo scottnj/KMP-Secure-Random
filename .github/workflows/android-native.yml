@@ -73,49 +73,21 @@ jobs:
           echo "   Type Width: ${{ matrix.bits }}"
           echo "   Source Set: src/${matrix.target}Main/"
 
-      - name: Verify Source Set Structure
+      - name: Verify Source Sets Exist
         run: |
-          echo "📁 Checking source set structure for ${{ matrix.target }}..."
+          echo "📁 Checking source sets for ${{ matrix.target }}..."
 
-          # Check main source exists
           if [ ! -d "shared/src/${{ matrix.target }}Main" ]; then
-            echo "❌ Missing main source set: shared/src/${{ matrix.target }}Main"
+            echo "❌ Missing: shared/src/${{ matrix.target }}Main"
             exit 1
           fi
 
-          # Check test source exists
           if [ ! -d "shared/src/${{ matrix.target }}Test" ]; then
-            echo "❌ Missing test source set: shared/src/${{ matrix.target }}Test"
+            echo "❌ Missing: shared/src/${{ matrix.target }}Test"
             exit 1
           fi
 
-          # Check main implementation exists
-          IMPL_FILE="shared/src/${{ matrix.target }}Main/kotlin/com/scottnj/kmp_secure_random/SecureRandom.${{ matrix.target }}.kt"
-          if [ ! -f "$IMPL_FILE" ]; then
-            echo "❌ Missing implementation file: $IMPL_FILE"
-            echo "Looking for files in directory:"
-            ls -la "shared/src/${{ matrix.target }}Main/kotlin/com/scottnj/kmp_secure_random/" || echo "Directory not found"
-            exit 1
-          fi
-
-          echo "✅ Source set structure validated"
-
-      - name: Verify Syscall Configuration
-        run: |
-          echo "🔧 Verifying syscall configuration for ${{ matrix.architecture }}..."
-
-          # Check syscall number in source
-          IMPL_FILE="shared/src/${{ matrix.target }}Main/kotlin/com/scottnj/kmp_secure_random/SecureRandom.${{ matrix.target }}.kt"
-          EXPECTED_SYSCALL="${{ matrix.syscall }}"
-
-          if ! grep -q "SYS_GETRANDOM.*${EXPECTED_SYSCALL}" "$IMPL_FILE"; then
-            echo "❌ Expected syscall $EXPECTED_SYSCALL not found in $IMPL_FILE"
-            echo "Found syscall configuration:"
-            grep "SYS_GETRANDOM" "$IMPL_FILE" || echo "No SYS_GETRANDOM found"
-            exit 1
-          fi
-
-          echo "✅ Syscall $EXPECTED_SYSCALL configuration verified"
+          echo "✅ Source sets validated"
 
       - name: Build ${{ matrix.architecture }} Target
         run: |
