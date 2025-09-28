@@ -71,7 +71,7 @@ jobs:
           echo "   Target: ${{ matrix.target }}"
           echo "   Syscall: getrandom() ${{ matrix.syscall }}"
           echo "   Type Width: ${{ matrix.bits }}"
-          echo "   Source Set: src/${matrix.target}Main/"
+          echo "   Source Set: src/${{ matrix.target }}Main/"
 
       - name: Verify Source Sets Exist
         run: |
