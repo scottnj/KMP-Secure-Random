@@ -44,11 +44,12 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Setup Android NDK
-        uses: nttld/setup-ndk@v1
-        with:
-          ndk-version: r25c
-          add-to-path: false
+      # Note: Android Native in KMP uses different toolchains, NDK setup may not be required
+      # - name: Setup Android NDK
+      #   uses: nttld/setup-ndk@v1
+      #   with:
+      #     ndk-version: r25c
+      #     add-to-path: false
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
@@ -89,8 +90,11 @@ jobs:
           fi
 
           # Check main implementation exists
-          if [ ! -f "shared/src/${{ matrix.target }}Main/kotlin/com/scottnj/kmp_secure_random/SecureRandom.${{ matrix.target }}.kt" ]; then
-            echo "❌ Missing implementation file"
+          IMPL_FILE="shared/src/${{ matrix.target }}Main/kotlin/com/scottnj/kmp_secure_random/SecureRandom.${{ matrix.target }}.kt"
+          if [ ! -f "$IMPL_FILE" ]; then
+            echo "❌ Missing implementation file: $IMPL_FILE"
+            echo "Looking for files in directory:"
+            ls -la "shared/src/${{ matrix.target }}Main/kotlin/com/scottnj/kmp_secure_random/" || echo "Directory not found"
             exit 1
           fi
 
@@ -116,19 +120,19 @@ jobs:
       - name: Build ${{ matrix.architecture }} Target
         run: |
           echo "🔨 Building Android Native ${{ matrix.architecture }} target..."
-          ./gradlew ${{ matrix.target }}MainKlibrary --info --stacktrace
+          ./gradlew shared:${{ matrix.target }}MainKlibrary --info --stacktrace
 
       - name: Compile ${{ matrix.architecture }} Tests
         run: |
           echo "🧪 Compiling ${{ matrix.architecture }} tests..."
-          ./gradlew ${{ matrix.target }}TestKlibrary --info --stacktrace
+          ./gradlew shared:${{ matrix.target }}TestKlibrary --info --stacktrace
 
       - name: Validate Metadata Isolation
         run: |
           echo "🔬 Validating metadata isolation for ${{ matrix.target }}..."
 
           # Check that build completed without metadata conflicts
-          if [ ! -d "shared/build/classes/kotlin/${{ matrix.target }}Main" ]; then
+          if [ ! -d "shared/build/classes/kotlin/${{ matrix.target }}" ]; then
             echo "❌ Build directory not found - compilation may have failed"
             exit 1
           fi
@@ -162,9 +166,8 @@ jobs:
         with:
           name: android-native-${{ matrix.target }}-artifacts
           path: |
-            shared/build/classes/kotlin/${{ matrix.target }}Main/
-            shared/build/classes/kotlin/${{ matrix.target }}Test/
-            shared/build/libs/
+            shared/build/classes/kotlin/${{ matrix.target }}/
+            shared/build/libs/shared-*${{ matrix.target }}*.jar
           retention-days: 7
 
   # Comprehensive integration test
@@ -182,11 +185,12 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Setup Android NDK
-        uses: nttld/setup-ndk@v1
-        with:
-          ndk-version: r25c
-          add-to-path: false
+      # Note: Android Native in KMP uses different toolchains, NDK setup may not be required
+      # - name: Setup Android NDK
+      #   uses: nttld/setup-ndk@v1
+      #   with:
+      #     ndk-version: r25c
+      #     add-to-path: false
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
@@ -194,7 +198,7 @@ jobs:
       - name: Build All Android Native Targets
         run: |
           echo "🚀 Building all Android Native targets together..."
-          ./gradlew androidNativeArm32MainKlibrary androidNativeArm64MainKlibrary androidNativeX86MainKlibrary androidNativeX64MainKlibrary --parallel --info
+          ./gradlew shared:androidNativeArm32MainKlibrary shared:androidNativeArm64MainKlibrary shared:androidNativeX86MainKlibrary shared:androidNativeX64MainKlibrary --parallel --info
 
       - name: Validate Complete Build
         run: |
