@@ -73,9 +73,9 @@ Platform-specific tests:
 The library uses Kotlin Multiplatform's expect/actual mechanism for platform-specific secure random implementations:
 
 - **Common interface**: `SecureRandom` interface defined in `commonMain` with `createSecureRandom()` factory function
-- **Platform implementations**: Each target has placeholder implementations ready for secure random generation
-- **Current Status**: All implementations are placeholder TODOs - ready for actual secure random implementation
-- **Test framework**: Basic test structure in place, currently with placeholder test
+- **Platform implementations**: Each target uses platform-specific secure random APIs via expect/actual pattern
+- **Current Status**: 11 of 12 platforms fully implemented with production-ready secure random generation
+- **Test framework**: Comprehensive test suite with 30 test files covering statistical validation, security, and performance
 
 ## Current Implementation Status
 
@@ -86,7 +86,7 @@ The library uses Kotlin Multiplatform's expect/actual mechanism for platform-spe
 - **Dependency Security**: OWASP dependency-check plugin integrated for vulnerability scanning
 - **Documentation Generation**: Dokka plugin integrated with HTML documentation generation and smoke testing
 - **Build System**: All 20+ KMP targets compile and build successfully
-- **Test Framework**: Comprehensive testing infrastructure validated with 6 test files covering all aspects
+- **Test Framework**: Comprehensive testing infrastructure with 30 test files covering statistical validation, security, and performance
 - **Quality Gates**: Automated quality gates with `qualityGates`, enhanced `check`, and `quickCheck` tasks
 - **Project Structure**: Clean architecture with proper .gitignore exclusions
 
@@ -276,20 +276,66 @@ This library follows clean architecture principles with robust error handling an
   - [x] Validated on Ubuntu machines (latest, 22.04, 24.04) ✅ **COMPLETE**
 
 - [x] **Windows Platform (MinGW)** ✅ **COMPLETE**
-  - [x] Implement `WindowsSecureRandomAdapter` using `CryptGenRandom` API ✅ **COMPLETE**
+  - [x] Implement `WindowsSecureRandom` using `CryptGenRandom` API ✅ **COMPLETE**
   - [x] Add proper initialization and error recovery mechanisms ✅ **COMPLETE**
   - [x] Handle Windows-specific error conditions and COM library requirements ✅ **COMPLETE**
   - [x] Test MinGW cross-compilation and GitHub Actions validation ✅ **COMPLETE**
   - [x] Comprehensive Windows testing with statistical randomness validation ✅ **COMPLETE**
 
-- [ ] **Android Native Platforms**
-  - [ ] Implement `AndroidNativeX64SecureRandomAdapter` for androidNativeX64
-  - [ ] Implement `AndroidNativeX86SecureRandomAdapter` for androidNativeX86
-  - [ ] Implement `AndroidNativeArm32SecureRandomAdapter` for androidNativeArm32
-  - [ ] Implement `AndroidNativeArm64SecureRandomAdapter` for androidNativeArm64
-  - [ ] Use direct native random API access bypassing Android Runtime
-  - [ ] Handle Android NDK-specific requirements and API levels
-  - [ ] Test all Android Native variants with cross-compilation
+- [ ] **Android Native Implementation** - ARCHITECTURAL SEPARATION REQUIRED
+
+  **Problem**: Android Native architectures (ARM32, ARM64, x86, x86_64) have different bit widths and syscall numbers, causing KMP metadata compilation conflicts similar to watchOS.
+
+  **Solution**: Implement per-architecture source sets following the watchOS separation pattern.
+
+  **Implementation Plan**:
+
+  **Build System Changes** (build.gradle.kts):
+  ```kotlin
+  // Remove shared androidNativeMain source set
+  // Create per-architecture source sets
+  val androidNativeArm32Main by creating { dependsOn(nativeMain) }
+  val androidNativeArm64Main by creating { dependsOn(nativeMain) }
+  val androidNativeX86Main by creating { dependsOn(nativeMain) }
+  val androidNativeX64Main by creating { dependsOn(nativeMain) }
+
+  // Connect each architecture to its specific source set
+  androidNativeArm32().compilations["main"].defaultSourceSet.dependsOn(androidNativeArm32Main)
+  androidNativeArm64().compilations["main"].defaultSourceSet.dependsOn(androidNativeArm64Main)
+  androidNativeX86().compilations["main"].defaultSourceSet.dependsOn(androidNativeX86Main)
+  androidNativeX64().compilations["main"].defaultSourceSet.dependsOn(androidNativeX64Main)
+  ```
+
+  **Implementation Tasks**:
+  - [ ] Remove shared androidNativeMain source set from build.gradle.kts
+  - [ ] Create per-architecture source sets (androidNativeArm32Main, androidNativeArm64Main, androidNativeX86Main, androidNativeX64Main)
+  - [ ] Connect each architecture to its specific source set in build configuration
+
+  - [ ] **androidNativeArm32Main/SecureRandom.androidNativeArm32.kt**
+    - ARM32 syscall number: 384
+    - 32-bit pointer handling with UInt types
+    - `/dev/urandom` fallback mechanism
+
+  - [ ] **androidNativeArm64Main/SecureRandom.androidNativeArm64.kt**
+    - ARM64 syscall number: 278
+    - 64-bit pointer handling with ULong types
+    - `/dev/urandom` fallback mechanism
+
+  - [ ] **androidNativeX86Main/SecureRandom.androidNativeX86.kt**
+    - x86 syscall number: 355
+    - 32-bit pointer handling with UInt types
+    - x86-specific optimizations
+
+  - [ ] **androidNativeX64Main/SecureRandom.androidNativeX64.kt**
+    - x86_64 syscall number: 318
+    - 64-bit pointer handling with ULong types
+    - x86_64-specific optimizations
+
+  **Test Infrastructure**:
+  - [ ] Per-architecture test directories
+  - [ ] Architecture-specific validation
+  - [ ] Cross-compilation testing
+  - [ ] Performance benchmarks per architecture
 
 - [ ] **Enhanced Statistical Testing**
   - [ ] Implement full NIST SP 800-22 test suite (15 statistical tests)
@@ -297,7 +343,7 @@ This library follows clean architecture principles with robust error handling an
   - [ ] Create FIPS 140-2 compliance validation
   - [ ] Add continuous monitoring for randomness quality degradation
 
-### 🚀 Phase 6: Production Readiness - **90% COMPLETE**
+### 🚀 Phase 6: Production Readiness - **96% COMPLETE**
 - [x] **CI/CD Pipeline** ✅ **COMPLETE**
   - [x] Set up GitHub Actions for all 20+ KMP targets ✅ **COMPLETE**
   - [x] Add automated testing across platforms ✅ **COMPLETE**
@@ -321,15 +367,17 @@ This library follows clean architecture principles with robust error handling an
 - ✅ **Phase 2**: JVM Implementation (First Platform) - **COMPLETE**
 - ✅ **Phase 3**: Comprehensive Testing (JVM) - **COMPLETE**
 - ✅ **Phase 4**: Quality Assurance & Tooling - **COMPLETE**
-- ✅ **Phase 5**: Platform Expansion - **92% COMPLETE** (JVM ✅ Android ✅ Apple platforms ✅ JavaScript ✅ WASM-JS ✅ Linux ✅ Windows ✅ Complete | Android Native 🔲 Pending)
+- ✅ **Phase 5**: Platform Expansion - **96% COMPLETE** (11 of 12 platforms: JVM ✅ Android ✅ iOS ✅ macOS ✅ tvOS ✅ watchOS ✅ JavaScript ✅ WASM-JS ✅ Linux ✅ Windows ✅ | Android Native 🔲 Pending)
 
-**Active Phase**: Phase 6 - Production Readiness (Platform Expansion 94% complete, Documentation & Licensing complete, CI/CD ✅ complete)
+**Active Phase**: Phase 6 - Production Readiness (Documentation & Licensing ✅ CI/CD ✅ Security Audit pending)
 
 **Overall Project Completion: 96%** - 11 out of 12 target platforms fully implemented with production-ready documentation, licensing, and automated CI/CD
 
-## watchOS Phase 5 Resolution - Complete ✅
+## Platform-Specific Implementation Details
 
-### Issue Resolution Summary
+### watchOS Resolution - Complete ✅
+
+**Issue Resolution Summary**
 The original watchOS implementation had "different bit width requirements" that caused metadata compilation conflicts when sharing expect/actual declarations with other Apple platforms. This was successfully resolved with an **architectural separation approach**.
 
 **✅ Final Solution - Architectural Separation**:
@@ -416,7 +464,7 @@ The original watchOS implementation had "different bit width requirements" that 
 - 🔍 Static Analysis: Zero detekt violations
 - 🛡️ Security: OWASP dependency check integrated with NVD API
 - 📖 Documentation: Automated API doc generation
-- 🧪 Testing: **28 test files**, **JVM, Android, iOS, macOS, tvOS, watchOS, JavaScript, WASM-JS tests all passing**
+- 🧪 Testing: **30 test files**, **JVM, Android, iOS, macOS, tvOS, watchOS, JavaScript, WASM-JS tests all passing**
   - **JVM-specific tests**: 4 advanced test files with statistical randomness, security, and performance validation
   - **Android-specific tests**: 2 comprehensive test files with adapter functionality and integration validation
   - **Apple-specific tests**: 2 comprehensive test files for iOS/macOS/tvOS/watchOS platform validation with SecRandomCopyBytes integration
@@ -432,9 +480,20 @@ The original watchOS implementation had "different bit width requirements" that 
 - ✅ **WASM-JS Implementation**: Fully functional with WasmJsSecureRandomAdapter using Web Crypto API (browsers) and enhanced Math.random fallback (D8 testing environments)
 - 🔬 **Testing Status**: Statistical randomness, thread safety, performance benchmarks validated for implemented platforms
 
-## WASM-JS Phase 5 Implementation - Complete ✅
+### JavaScript Implementation - Complete ✅
 
-### Implementation Summary
+**Implementation Summary**
+JavaScript SecureRandom implementation provides full cryptographically secure random generation for both browser and Node.js environments.
+
+**✅ Final Solution - Environment Detection**:
+- **Browser Environment**: Web Crypto API's `crypto.getRandomValues()`
+- **Node.js Environment**: Node.js `crypto.randomBytes()` API
+- **Architecture**: Automatic environment detection with appropriate API selection
+- **Key Feature**: Seamless operation across all JavaScript runtime environments
+
+### WASM-JS Implementation - Complete ✅
+
+**Implementation Summary**
 WASM-JS SecureRandom implementation was successfully completed despite initial interop challenges, using an intelligent environment-aware approach.
 
 **✅ Final Solution - Environment-Aware Implementation**:
@@ -461,46 +520,10 @@ WASM-JS SecureRandom implementation was successfully completed despite initial i
 - ✅ D8 environment: Statistical tests pass with enhanced fallback
 - ✅ Cross-platform compatibility validated
 
-## Recent Major Achievements - January 2025 ✅
 
-### WASM-JS Platform Implementation Complete
-- ✅ **Full WASM-JS Support**: Environment-aware implementation using Web Crypto API (browsers) and enhanced Math.random fallback (D8)
-- ✅ **Statistical Innovation**: Multi-source XOR technique passes all statistical tests including monobit frequency analysis
-- ✅ **Perfect Test Results**: All 314 WASM-JS tests passing (100% success rate)
-- ✅ **Security Distinction**: Clear production (browser) vs testing (D8) environment handling
+### Linux Platform Implementation - Complete ✅
 
-### Complete Project Documentation & Licensing
-- ✅ **Comprehensive README**: Platform support table, usage examples, architecture overview, contributing guidelines
-- ✅ **MIT License**: Full licensing with dependency compatibility analysis (Apache 2.0 compatible)
-- ✅ **Security-First Documentation**: Emphasizes "no custom crypto" principle and platform-native API usage
-- ✅ **Contributing Guidelines**: Detailed security-focused development guidelines for contributors
-
-### Production Readiness Milestone
-- ✅ **10 out of 12 Platforms**: Production-ready implementations across all major platforms
-- ✅ **Quality Standards**: Zero static analysis violations, comprehensive testing, full API documentation
-- ✅ **Clean Architecture**: Result<T> error handling, thread-safe implementations, adapter pattern
-- ✅ **Open Source Ready**: Complete licensing, contributing guidelines, security documentation
-- ✅ **CI/CD Pipeline**: GitHub Actions automated testing and validation
-
-**Next Milestone**:
-- **Phase 6**: Production Readiness - Final native platform implementations (Windows, MinGW, Android Native)
-
-**Platform Status**:
-- **JVM**: ✅ Production-ready implementation
-- **Android**: ✅ Production-ready implementation with API level optimization
-- **iOS**: ✅ Production-ready implementation with SecRandomCopyBytes
-- **macOS**: ✅ Production-ready implementation with SecRandomCopyBytes
-- **tvOS**: ✅ Production-ready implementation with SecRandomCopyBytes
-- **watchOS**: ✅ Production-ready implementation with arc4random (architecturally separated)
-- **JavaScript**: ✅ Production-ready implementation with Web Crypto API/Node.js crypto environment detection
-- **WASM-JS**: ✅ Production-ready implementation with Web Crypto API (browsers) and enhanced Math.random fallback (D8 testing environments)
-- **Linux x64**: ✅ Production-ready implementation with getrandom() syscall + /dev/urandom fallback, GitHub Actions validated
-- **Linux ARM64**: ✅ Production-ready implementation with getrandom() syscall + /dev/urandom fallback, cross-compilation verified
-- **Windows/MinGW/Android Native**: 🔲 Placeholder TODOs ready for implementation
-
-## Linux Platform Phase 5 Implementation - Complete ✅
-
-### Implementation Summary
+**Implementation Summary**
 The Linux platform SecureRandom implementation was successfully completed with comprehensive GitHub Actions CI/CD integration.
 
 **✅ Full Linux SecureRandom Implementation**:
@@ -535,15 +558,13 @@ The Linux platform SecureRandom implementation was successfully completed with c
 - **CI/CD**: ✅ Automated testing pipeline operational
 - **Quality**: ✅ Production-ready with comprehensive validation
 
-**Project Milestone**: Linux platform completes Phase 5 Platform Expansion, bringing total implementation to **92% complete** with **10 out of 12 target platforms** fully operational.
+### Windows (MinGW) Platform Implementation - Complete ✅
 
-## Windows (MinGW) Platform Phase 5 Implementation - Complete ✅
-
-### Implementation Summary
+**Implementation Summary**
 The Windows platform SecureRandom implementation was successfully completed with dual Windows cryptography API support and GitHub Actions CI/CD integration.
 
 **✅ Full Windows SecureRandom Implementation**:
-- **WindowsSecureRandomAdapter**: Production-ready implementation using Windows Cryptography APIs
+- **WindowsSecureRandom**: Production-ready implementation using Windows Cryptography APIs
 - **Dual API Approach**: Primary use of `BCryptGenRandom` (Windows Vista+) with fallback to `CryptGenRandom` (Windows 2000+)
 - **Comprehensive Error Handling**: Windows-specific error conditions and recovery mechanisms
 - **Thread-Safe**: Proper memory management and cinterop usage with `@OptIn(ExperimentalForeignApi)`
@@ -575,11 +596,9 @@ The Windows platform SecureRandom implementation was successfully completed with
 - **Quality**: ✅ Production-ready with comprehensive validation
 - **API Compatibility**: ✅ Works on Windows 2000 through Windows 11
 
-**Project Milestone**: Windows platform completes Phase 5 Platform Expansion, bringing total implementation to **96% complete** with **11 out of 12 target platforms** fully operational.
+## Recent Major Achievements - January 2025 ✅
 
-## Recent Major Achievement - January 2025 ✅
-
-### Native Platform GitHub Actions Validation Complete
+### Native Platform GitHub Actions Validation
 - ✅ **Linux Platform Validated**: All 314+ Linux tests successfully pass on GitHub Actions Ubuntu runners (ubuntu-latest, ubuntu-22.04, ubuntu-24.04)
 - ✅ **Windows Platform Validated**: All 23 Windows tests successfully pass on GitHub Actions Windows runners (windows-latest, windows-2022)
 - ✅ **Dual API Validation**: Linux `getrandom()` syscall + `/dev/urandom` fallback and Windows `CryptGenRandom` API validated on real machines
@@ -589,4 +608,37 @@ The Windows platform SecureRandom implementation was successfully completed with
 
 **Security Confirmation**: Both Linux and Windows implementations have been validated to work correctly with platform-native cryptographic APIs on real machines, confirming cryptographically secure random number generation across all major native platforms.
 
+### Complete Project Documentation & Licensing
+- ✅ **Comprehensive README**: Platform support table, usage examples, architecture overview, contributing guidelines
+- ✅ **MIT License**: Full licensing with dependency compatibility analysis (Apache 2.0 compatible)
+- ✅ **Security-First Documentation**: Emphasizes "no custom crypto" principle and platform-native API usage
+- ✅ **Contributing Guidelines**: Detailed security-focused development guidelines for contributors
+
+### Production Readiness Milestone
+- ✅ **11 out of 12 Platforms**: Production-ready implementations across all major platforms
+- ✅ **Quality Standards**: Zero static analysis violations, comprehensive testing, full API documentation
+- ✅ **Clean Architecture**: Result<T> error handling, thread-safe implementations, adapter pattern
+- ✅ **Open Source Ready**: Complete licensing, contributing guidelines, security documentation
+- ✅ **CI/CD Pipeline**: GitHub Actions automated testing and validation
+
 **Platform Milestone**: With successful validation of both Linux and Windows platforms, the project achieves **96% completion** with **11 out of 12 target platforms** fully operational, leaving only Android Native platforms for final implementation.
+
+### Android Native Implementation - In Progress 🏗️
+
+**Problem Analysis**
+
+Android Native platforms face the same fundamental issue as watchOS: KMP metadata compilation cannot unify across architectures with different bit widths and system interfaces.
+
+**Specific Conflicts**:
+1. **Type Size Mismatches**: `size_t` differs between 32-bit (ARM32/x86) and 64-bit (ARM64/x86_64) architectures
+2. **Syscall Number Differences**: `getrandom()` syscall varies by architecture (#384 ARM32, #278 ARM64, #355 x86, #318 x86_64)
+3. **KMP Metadata Limitation**: Cannot unify different bit width types in expect/actual declarations
+
+**Solution**: Per-Architecture Source Sets
+
+Following the successful watchOS pattern, each Android Native architecture requires its own source set with:
+- Separate source set for each architecture (androidNativeArm32Main, androidNativeArm64Main, etc.)
+- Architecture-specific syscall numbers and type handling
+- Isolated metadata compilation per architecture
+
+**Current Status**: 🔲 Pending implementation in Phase 5 Android Native checklist item above

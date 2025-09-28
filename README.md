@@ -1,6 +1,6 @@
 # KMP Secure Random
 
-[![Kotlin](https://img.shields.io/badge/kotlin-2.1.0-blue.svg?logo=kotlin)](http://kotlinlang.org)
+[![Kotlin](https://img.shields.io/badge/kotlin-2.2.20-blue.svg?logo=kotlin)](http://kotlinlang.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?logo=opensourceinitiative)](https://opensource.org/licenses/MIT)
 [![Security](https://img.shields.io/badge/security-native%20APIs%20only-green.svg?logo=shield)](https://github.com/scottnj/KMP-Secure-Random#important-we-dont-roll-our-own-crypto)
 
@@ -17,6 +17,23 @@
 A Kotlin Multiplatform library for secure random number generation across all supported platforms.
 
 **Repository**: https://github.com/scottnj/KMP-Secure-Random
+
+## Table of Contents
+
+- [Overview](#overview)
+- [Platform Support](#platform-support)
+  - [Android Native Architecture](#android-native-architecture)
+  - [WASM-JS Environment Notes](#wasm-js-environment-notes)
+- [Features](#features)
+- [Quick Start](#quick-start)
+- [Usage](#usage)
+- [Error Handling](#error-handling)
+- [Build Commands](#build-commands)
+- [Architecture](#architecture)
+- [Testing](#testing)
+- [Dependencies](#dependencies)
+- [License](#license)
+- [Contributing](#contributing)
 
 ## Overview
 
@@ -52,7 +69,39 @@ This library **does NOT implement custom cryptographic algorithms**. Instead, it
 | Linux x64 | ✅ **Production Ready** | `LinuxSecureRandomAdapter` using `getrandom()` + `/dev/urandom` fallback - **GitHub Actions Validated** | Cryptographically secure |
 | Linux ARM64 | ✅ **Production Ready** | `LinuxSecureRandomAdapter` using `getrandom()` + `/dev/urandom` fallback - **GitHub Actions Validated** | Cryptographically secure |
 | Windows (MinGW) | ✅ **Production Ready** | `WindowsSecureRandom` using `CryptGenRandom` API - **GitHub Actions Validated** | Cryptographically secure |
-| Android Native (x64/x86/arm32/arm64) | 🔲 **Planned** | Direct NDK random API access | Cryptographically secure |
+| Android Native ARM32 | 🏗️ **In Development** | Architecture-specific `/dev/urandom` implementation | Cryptographically secure |
+| Android Native ARM64 | 🏗️ **In Development** | Architecture-specific `/dev/urandom` implementation | Cryptographically secure |
+| Android Native x86 | 🏗️ **In Development** | Architecture-specific `/dev/urandom` implementation | Cryptographically secure |
+| Android Native x86_64 | 🏗️ **In Development** | Architecture-specific `/dev/urandom` implementation | Cryptographically secure |
+
+### Android Native Architecture
+
+Android Native platforms require **architectural separation** due to fundamental differences between ARM32, ARM64, x86, and x86_64 architectures:
+
+#### Why Architectural Separation?
+
+1. **Different Bit Widths**: 32-bit (ARM32/x86) vs 64-bit (ARM64/x86_64) architectures have incompatible type sizes
+2. **Architecture-Specific Syscalls**: Each architecture uses different system call numbers for `getrandom()`
+3. **KMP Metadata Limitations**: Kotlin Multiplatform cannot unify metadata across architectures with different bit widths
+
+#### Implementation Strategy
+
+Instead of a single `androidNativeMain` source set, we use **per-architecture source sets**:
+
+```
+src/
+├── androidNativeArm32Main/   # ARM32-specific implementation
+├── androidNativeArm64Main/   # ARM64-specific implementation
+├── androidNativeX86Main/     # x86-specific implementation
+└── androidNativeX64Main/     # x86_64-specific implementation
+```
+
+Each architecture gets:
+- **Correct syscall numbers**: ARM32 (384), ARM64 (278), x86 (355), x86_64 (318)
+- **Proper type handling**: Architecture-appropriate `size_t`, pointer sizes
+- **Optimized implementation**: Architecture-specific optimizations
+
+This approach follows the same pattern successfully used for watchOS separation and ensures cryptographically secure random generation on all Android Native architectures.
 
 ### WASM-JS Environment Notes
 
@@ -69,7 +118,65 @@ The WASM-JS implementation uses intelligent environment detection:
 - **Thread-Safe**: All implementations are guaranteed thread-safe
 - **Cross-Platform API**: Consistent interface across all platforms
 - **Statistical Quality**: Passes rigorous statistical tests (chi-square, monobit frequency, entropy analysis)
-- **Production Ready**: Comprehensive test suite with 314+ tests across all platforms
+- **Production Ready**: Comprehensive test suite with 587+ test methods across all platforms
+
+## Quick Start
+
+### Add Dependency
+
+Add the KMP Secure Random library to your `build.gradle.kts`:
+
+```kotlin
+// In your module's build.gradle.kts
+dependencies {
+    implementation("com.scottnj:kmp-secure-random:1.0.0") // When published
+}
+```
+
+**Current Status**: This library is 96% complete and in final development.
+
+**To try it now:**
+```bash
+# Clone and include as a local dependency
+git clone https://github.com/scottnj/KMP-Secure-Random.git
+# Then add as a project dependency or use composite builds
+```
+
+**Coming Soon**: Maven Central publication for easy dependency management.
+
+### Basic Usage
+
+```kotlin
+// In your commonMain source set - works on ALL KMP targets
+val secureRandom = createSecureRandom().getOrThrow()
+
+// Generate secure random data
+val randomBytes = secureRandom.nextBytes(32).getOrThrow()  // 32 random bytes
+val randomInt = secureRandom.nextInt(100).getOrThrow()     // 0-99
+val randomId = secureRandom.nextLong().getOrThrow()       // Secure ID
+
+println("Generated ${randomBytes.size} secure random bytes")
+```
+
+**Key Benefits for KMP Projects:**
+- Write once in `commonMain`, runs securely on all targets
+- No platform-specific code needed
+- Automatic fallback to each platform's native crypto APIs
+- Consistent error handling with `Result<T>` pattern
+
+### Platform-Specific Benefits
+
+The same code above works identically across all KMP platforms:
+
+- **JVM/Android**: Uses `java.security.SecureRandom`
+- **iOS/macOS/tvOS**: Uses Apple's `SecRandomCopyBytes`
+- **watchOS**: Uses `arc4random` (architecturally optimized)
+- **JavaScript**: Uses Web Crypto API or Node.js crypto
+- **WASM-JS**: Uses Web Crypto API with testing fallback
+- **Linux**: Uses `getrandom()` syscall with `/dev/urandom` fallback
+- **Windows**: Uses `CryptGenRandom` API
+
+**✅ All implementations are cryptographically secure and thread-safe.**
 
 ## Usage
 
@@ -134,15 +241,14 @@ when {
 ```
 
 ### GitHub Actions CI/CD
-```shell
-# Automated testing on every push/PR:
-# - Linux tests run on real Ubuntu machines (ubuntu-latest, 22.04, 24.04)
-# - Cross-platform compilation verification for all 20+ targets
-# - Quality gates with static analysis, coverage, and security scanning
-# - Performance benchmarks and statistical randomness validation
 
-# View test results: https://github.com/scottnj/KMP-Secure-Random/actions
-```
+Automated testing runs on every push/PR:
+- Linux tests run on real Ubuntu machines (ubuntu-latest, 22.04, 24.04)
+- Cross-platform compilation verification for all 20+ targets
+- Quality gates with static analysis, coverage, and security scanning
+- Performance benchmarks and statistical randomness validation
+
+**View test results**: https://github.com/scottnj/KMP-Secure-Random/actions
 
 ### Quality checks
 ```shell
@@ -171,7 +277,7 @@ The library follows clean architecture principles:
 The library includes comprehensive testing with automated CI/CD:
 
 ### Test Infrastructure
-- **28 test files** with 314+ test methods
+- **30 test files** with 587+ test methods
 - **Statistical validation** (chi-square, entropy, autocorrelation tests)
 - **Security testing** (thread safety, memory security, performance benchmarks)
 - **Cross-platform compatibility** testing
