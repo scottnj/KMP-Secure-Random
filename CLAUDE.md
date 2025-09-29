@@ -216,3 +216,5 @@ Each using `getrandom()` + `/dev/urandom` fallback pattern.
 
 **Security Confirmation**: All implemented platforms use platform-native cryptographic APIs with explicit security boundary enforcement
 
+**GitHub Actions Workflow Optimization**: Consolidated 4 duplicate workflows into 2 optimized workflows - main CI/CD pipeline (`ci.yml`) for compilation and core testing across all 12 platforms, and dedicated platform validation (`platform-validation.yml`) for native API testing. Eliminated redundancy and improved CI efficiency for KMP development.
+

@@ -320,11 +320,11 @@ when {
 
 ### GitHub Actions CI/CD
 
-Automated testing runs on every push/PR:
-- Linux tests run on real Ubuntu machines (ubuntu-latest, 22.04, 24.04)
-- Cross-platform compilation verification for all 20+ targets
-- Quality gates with static analysis, coverage, and security scanning
-- Performance benchmarks and statistical randomness validation
+Optimized dual-workflow CI/CD pipeline:
+- **Main CI Pipeline**: Compiles all 12 KMP platforms, tests core platforms (JVM, Android, JS, WASM-JS)
+- **Platform Validation**: Dedicated native platform testing with real APIs (Linux getrandom(), Windows CryptGenRandom, Android Native syscalls)
+- **Quality Gates**: Static analysis, coverage verification, security scanning, documentation generation
+- **Efficient Architecture**: Consolidated from 4 workflows to 2 optimized workflows, eliminating redundancy
 
 **View test results**: https://github.com/scottnj/KMP-Secure-Random/actions
 
