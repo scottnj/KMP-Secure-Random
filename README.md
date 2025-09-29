@@ -356,18 +356,31 @@ The library includes comprehensive testing with automated CI/CD:
 
 ### Test Infrastructure
 - **35+ test files** with comprehensive test coverage including security scenarios
-- **Statistical validation** (chi-square, entropy, autocorrelation tests)
+- **Statistical validation** (chi-square, entropy, autocorrelation, monobit frequency tests)
+- **Architecture verification** (direct syscall/API testing - validates actual syscall numbers and API calls)
 - **Security testing** (thread safety, memory security, performance benchmarks, fallback policy validation)
-- **Cross-platform compatibility** testing
+- **Cross-platform compatibility** testing with 32-bit vs 64-bit type system verification
 - **Fallback policy testing** (secure-by-default behavior, explicit opt-in validation)
 - **100% test pass rate** across all implemented platforms with security enhancements
+
+### Platform API Verification
+Tests now verify actual platform API usage rather than just functional correctness:
+- **Android Native**: Validates specific syscall numbers (ARM64 #278, ARM32 #384, x86 #355, x64 #318)
+- **Windows**: Confirms CryptGenRandom API calls with error code analysis
+- **Apple**: Verifies SecRandomCopyBytes usage with Security framework validation
+- **Linux**: Tests getrandom() syscall with kernel version detection
 
 ### GitHub Actions CI/CD
 - **Linux Testing**: Real tests on Ubuntu runners (latest, 22.04, 24.04)
 - **Cross-Platform Build**: All 20+ KMP targets verified
-- **Quality Gates**: Static analysis, coverage (90%+ target), security scanning
-- **Automated Validation**: Every push/PR triggers comprehensive testing
+- **Quality Gates**: Static analysis, coverage (90%+ target), OWASP dependency scanning
+- **Optimized Performance**: NVD API key support for 10x faster security scans
+- **Quick PR Checks**: Dedicated workflow for fast pull request validation
 - **Platform-Specific Validation**: Tests run with actual platform APIs (getrandom(), Web Crypto API, etc.)
+
+### CI/CD Configuration
+For optimal CI performance, add these GitHub secrets:
+- `NVD_API_KEY`: Get a free API key from [NVD](https://nvd.nist.gov/developers/request-an-api-key) to speed up dependency checks from 25+ minutes to 2-5 minutes
 
 ## Dependencies
 

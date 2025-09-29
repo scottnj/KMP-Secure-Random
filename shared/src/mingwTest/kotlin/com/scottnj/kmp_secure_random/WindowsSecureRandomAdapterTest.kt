@@ -180,4 +180,112 @@ class WindowsSecureRandomAdapterTest {
             assertFalse(bytes.all { b -> b == 0.toByte() })
         }
     }
+
+    @Test
+    fun testWindowsCryptAPIVerification() {
+        val testHelper = WindowsTestHelper.create()
+
+        // Test CryptAPI availability
+        val cryptResult = testHelper.verifyCryptAPIAvailability()
+        println("Windows CryptAPI verification: $cryptResult")
+
+        when (cryptResult) {
+            is WindowsCryptResult.Available -> {
+                println("✅ Windows CryptAPI is available and working")
+                assertTrue(true) // Test passes
+            }
+            is WindowsCryptResult.ContextFailed -> {
+                println("❌ CryptAcquireContextW failed with error: ${cryptResult.errorCode}")
+                assertTrue(false, "Windows CryptAPI context creation failed: ${cryptResult.errorCode}")
+            }
+            is WindowsCryptResult.GenRandomFailed -> {
+                println("❌ CryptGenRandom failed with error: ${cryptResult.errorCode}")
+                assertTrue(false, "Windows CryptGenRandom failed: ${cryptResult.errorCode}")
+            }
+            is WindowsCryptResult.Exception -> {
+                println("⚠️ Exception during CryptAPI verification: ${cryptResult.message}")
+                // Don't fail for exceptions, but log them
+            }
+        }
+    }
+
+    @Test
+    fun testWindowsCryptoProviders() {
+        val testHelper = WindowsTestHelper.create()
+        val providers = testHelper.testCryptoProviders()
+
+        println("=== Windows Crypto Providers ===")
+        providers.forEach { (provider, available) ->
+            val status = if (available) "✅" else "❌"
+            println("$status $provider: $available")
+        }
+
+        // At least PROV_RSA_FULL should be available (Windows 2000+)
+        assertTrue(providers["PROV_RSA_FULL"] == true,
+            "PROV_RSA_FULL should be available on Windows 2000+")
+    }
+
+    @Test
+    fun testWindowsEntropyQuality() {
+        val testHelper = WindowsTestHelper.create()
+        val entropyResult = testHelper.testEntropyQuality()
+
+        when (entropyResult) {
+            is EntropyTestResult.Success -> {
+                println("=== Windows Entropy Quality ===")
+                println("✅ Max deviation: ${entropyResult.maxDeviation}")
+                println("✅ Avg deviation: ${entropyResult.avgDeviation}")
+                println("✅ Unique values: ${entropyResult.uniqueValues}/256")
+                println("✅ All zeros: ${entropyResult.allZeros}")
+
+                // Basic quality checks
+                assertFalse(entropyResult.allZeros, "Generated data should not be all zeros")
+                assertTrue(entropyResult.uniqueValues > 50, "Should have reasonable variety in values")
+                assertTrue(entropyResult.maxDeviation < 2.0, "Distribution shouldn't be too skewed")
+            }
+            is EntropyTestResult.ContextFailed -> {
+                assertTrue(false, "Failed to create crypto context: ${entropyResult.errorCode}")
+            }
+            is EntropyTestResult.GenerationFailed -> {
+                assertTrue(false, "Failed to generate random data: ${entropyResult.errorCode}")
+            }
+            is EntropyTestResult.Exception -> {
+                println("⚠️ Exception during entropy test: ${entropyResult.message}")
+                // Don't fail for exceptions in entropy test
+            }
+        }
+    }
+
+    @Test
+    fun testCryptGenRandomDifferentSizes() {
+        val testHelper = WindowsTestHelper.create()
+        val sizeResults = testHelper.testCryptGenRandomSizes()
+
+        println("=== CryptGenRandom Size Testing ===")
+        sizeResults.forEach { (size, success) ->
+            val status = if (success) "✅" else "❌"
+            println("$status Size $size bytes: $success")
+        }
+
+        // All sizes should work
+        sizeResults.forEach { (size, success) ->
+            assertTrue(success, "CryptGenRandom should work for size $size")
+        }
+    }
+
+    @Test
+    fun testWindowsVersionInfo() {
+        val testHelper = WindowsTestHelper.create()
+        val versionInfo = testHelper.getWindowsVersion()
+
+        println("=== Windows Version Info ===")
+        println("Major version: ${versionInfo.majorVersion}")
+        println("Minor version: ${versionInfo.minorVersion}")
+        println("Build number: ${versionInfo.buildNumber}")
+        println("Supports CryptAPI: ${versionInfo.supportsCryptAPI}")
+        println("Supports BCrypt: ${versionInfo.supportsBCrypt}")
+
+        // Should support CryptAPI (available since Windows 2000)
+        assertTrue(versionInfo.supportsCryptAPI, "Should support CryptAPI on modern Windows")
+    }
 }

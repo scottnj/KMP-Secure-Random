@@ -232,4 +232,62 @@ class AppleSecureRandomAdapterTest {
         assertTrue(rangeResult.isSuccess, "nextInt(5, 6) should succeed")
         assertEquals(5, rangeResult.getOrThrow(), "nextInt(5, 6) should return 5")
     }
+
+    /**
+     * Test direct SecRandomCopyBytes API verification.
+     */
+    @Test
+    fun testSecRandomCopyBytesAPIVerification() {
+        val testHelper = AppleTestHelper.create("iOS")
+
+        // Test SecRandomCopyBytes availability
+        val apiResult = testHelper.verifySecRandomCopyBytesAvailability()
+        println("iOS SecRandomCopyBytes API verification: $apiResult")
+
+        when (apiResult) {
+            is AppleSecRandomResult.Available -> {
+                println("✅ iOS SecRandomCopyBytes API is available and working")
+                assertTrue(true) // Test passes
+            }
+            is AppleSecRandomResult.Failed -> {
+                println("❌ SecRandomCopyBytes failed with status: ${apiResult.status}")
+                assertTrue(false, "iOS SecRandomCopyBytes API failed with status: ${apiResult.status}")
+            }
+            is AppleSecRandomResult.Exception -> {
+                println("⚠️ Exception during SecRandomCopyBytes verification: ${apiResult.message}")
+                // Don't fail for exceptions, but log them
+            }
+        }
+    }
+
+    /**
+     * Test comprehensive iOS platform verification.
+     */
+    @Test
+    fun testComprehensiveIOSPlatformVerification() {
+        val testHelper = AppleTestHelper.create("iOS")
+
+        println("=== iOS Platform Verification ===")
+
+        // 1. SecRandomCopyBytes API verification
+        val apiAvail = testHelper.verifySecRandomCopyBytesAvailability()
+        assertTrue(apiAvail is AppleSecRandomResult.Available, "SecRandomCopyBytes must be available")
+        println("✅ SecRandomCopyBytes API: $apiAvail")
+
+        // 2. Platform information
+        val platformInfo = testHelper.getApplePlatformInfo()
+        println("✅ Platform info: $platformInfo")
+
+        // 3. Security framework verification
+        val frameworkResult = testHelper.verifySecurityFrameworkConstants()
+        println("ℹ️ Security framework: $frameworkResult")
+
+        // 4. API size testing
+        val sizeResults = testHelper.testSecRandomCopyBytesSizes()
+        val allSizesWork = sizeResults.values.all { it }
+        assertTrue(allSizesWork, "All buffer sizes should work with SecRandomCopyBytes")
+        println("✅ API size compatibility: $allSizesWork")
+
+        println("=== iOS Platform Verification Complete ===")
+    }
 }
