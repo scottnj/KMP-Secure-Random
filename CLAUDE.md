@@ -75,7 +75,7 @@ The library uses Kotlin Multiplatform's expect/actual mechanism for platform-spe
 - **Common interface**: `SecureRandom` interface defined in `commonMain` with `createSecureRandom()` factory function
 - **Platform implementations**: Each target uses platform-specific secure random APIs via expect/actual pattern
 - **Current Status**: 12 of 12 platforms fully implemented with production-ready secure random generation (100% platform coverage)
-- **Test framework**: Comprehensive test suite with 30 test files covering statistical validation, security, and performance
+- **Test framework**: Comprehensive test suite with 31 test files covering statistical validation, security, and performance
 
 ## Current Implementation Status
 
@@ -89,7 +89,7 @@ The library uses Kotlin Multiplatform's expect/actual mechanism for platform-spe
 - **Windows**: `CryptGenRandom` API (GitHub Actions validated)
 - **Android Native**: Production-ready with per-architecture implementation (GitHub Actions validated)
 
-**[x] Quality Metrics**: 30 test files, 80% coverage (target: 90% line, 85% branch), zero static analysis violations, comprehensive CI/CD pipeline
+**[x] Quality Metrics**: 31 test files, 80% coverage (target: 90% line, 85% branch), zero static analysis violations, comprehensive CI/CD pipeline
 
 ## Production Architecture
 
@@ -158,7 +158,7 @@ Each using `getrandom()` + `/dev/urandom` fallback pattern.
 
 ### Native Platforms GitHub Actions Validation [x]
 **Linux**: `LinuxSecureRandomAdapter` using `getrandom()` syscall + `/dev/urandom` fallback, validated on Ubuntu
-**Windows**: `WindowsSecureRandom` using `BCryptGenRandom`/`CryptGenRandom` APIs, validated on Windows Server
+**Windows**: `WindowsSecureRandom` using `CryptGenRandom` API, validated on Windows Server
 **Result**: Production-ready native implementations confirmed on real machines
 
 ## Recent Achievements [x]
