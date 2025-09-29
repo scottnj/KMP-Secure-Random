@@ -65,7 +65,7 @@ This library **does NOT implement custom cryptographic algorithms**. Instead, it
 | watchOS | ✅ **Production Ready** | `WatchosSecureRandomAdapter` using `arc4random` | Cryptographically secure |
 | JavaScript | ✅ **Production Ready** | `JsSecureRandomAdapter` with Web Crypto API/Node.js crypto | Cryptographically secure |
 | WASM-JS (Browser) | ✅ **Production Ready** | `WasmJsSecureRandomAdapter` using Web Crypto API | Cryptographically secure |
-| WASM-JS (D8) | ⚠️ **Testing Only** | `WasmJsSecureRandomAdapter` using Math.random fallback | Statistical quality only |
+| WASM-JS (D8) | ⚠️ **Secure by Default** | `WasmJsSecureRandomAdapter` fails without Web Crypto API | Secure-only (explicit opt-in for fallback) |
 | Linux x64 | ✅ **Production Ready** | `LinuxSecureRandomAdapter` using `getrandom()` + `/dev/urandom` fallback - **GitHub Actions Validated** | Cryptographically secure |
 | Linux ARM64 | ✅ **Production Ready** | `LinuxSecureRandomAdapter` using `getrandom()` + `/dev/urandom` fallback - **GitHub Actions Validated** | Cryptographically secure |
 | Windows (MinGW) | ✅ **Production Ready** | `WindowsSecureRandom` using `CryptGenRandom` API - **GitHub Actions Validated** | Cryptographically secure |
@@ -128,20 +128,38 @@ This implementation provides cryptographically secure random generation across a
 
 ### WASM-JS Environment Notes
 
-The WASM-JS implementation uses intelligent environment detection:
+The WASM-JS implementation prioritizes security through explicit fallback policies:
 
 - **Browser Environment**: Uses Web Crypto API (`crypto.getRandomValues()`) for cryptographically secure randomness
-- **D8 Environment**: Uses enhanced Math.random fallback with XOR of multiple sources for improved statistical properties
+- **D8 Environment**: **Secure by Default** - fails with `SecureRandomInitializationException` when Web Crypto API is unavailable
 
-**About D8**: D8 is Google V8's command-line JavaScript shell used for testing. It lacks Web APIs including the Web Crypto API, so our implementation provides a statistically robust fallback using `(r1 ^ r2 ^ r3 ^ r4) & 0xFF` to pass statistical quality tests while clearly marking it as not cryptographically secure.
+#### Security Design
+
+**Secure Usage (Recommended)**:
+```kotlin
+// Fails safely if Web Crypto API unavailable
+val secureRandom = createSecureRandom().getOrThrow()
+```
+
+**Insecure Fallback (Explicit Opt-in)**:
+```kotlin
+@OptIn(AllowInsecureFallback::class)
+val secureRandom = createSecureRandom(FallbackPolicy.ALLOW_INSECURE).getOrThrow()
+// Uses Math.random with XOR enhancement if Web Crypto unavailable
+```
+
+**About D8**: D8 is Google V8's command-line JavaScript shell used for testing. It lacks Web APIs including the Web Crypto API. The library now fails securely by default, only providing a statistically robust Math.random fallback when explicitly requested with compiler warnings.
 
 ## Features
 
+- **Secure by Default**: Fails safely when secure random generation is unavailable, preventing insecure fallbacks
+- **Explicit Security Opt-in**: `@AllowInsecureFallback` annotation with compiler warnings for insecure fallback usage
+- **Flexible Fallback Policies**: `FallbackPolicy.SECURE_ONLY` (default) and `FallbackPolicy.ALLOW_INSECURE` options
 - **Result-based Error Handling**: All operations return `SecureRandomResult<T>` instead of throwing exceptions
 - **Thread-Safe**: All implementations are guaranteed thread-safe
 - **Cross-Platform API**: Consistent interface across all platforms
 - **Statistical Quality**: Passes rigorous statistical tests (chi-square, monobit frequency, entropy analysis)
-- **Production Ready**: Comprehensive test suite with 31 test files covering all platforms
+- **Production Ready**: Comprehensive test suite with 35+ test files covering all platforms and security scenarios
 
 ## Quick Start
 
@@ -200,6 +218,43 @@ The same code above works identically across all KMP platforms:
 - **Windows**: Uses `CryptGenRandom` API
 
 **✅ All implementations are cryptographically secure and thread-safe.**
+
+## Security Framework
+
+### Fallback Policy System
+
+The library provides explicit control over security vs availability tradeoffs:
+
+#### Secure by Default (Recommended)
+```kotlin
+// Always secure - fails if secure random generation unavailable
+val secureRandom = createSecureRandom().getOrThrow()
+
+// Equivalent explicit form
+val secureRandom = createSecureRandom(FallbackPolicy.SECURE_ONLY).getOrThrow()
+```
+
+#### Explicit Insecure Fallback (Use with Caution)
+```kotlin
+// Requires @OptIn annotation and understanding of security implications
+@OptIn(AllowInsecureFallback::class)
+val secureRandom = createSecureRandom(FallbackPolicy.ALLOW_INSECURE).getOrThrow()
+```
+
+### Security Benefits
+
+- **Compiler Warnings**: `@RequiresOptIn` ensures developers explicitly acknowledge security tradeoffs
+- **Platform Enforcement**: Only platforms with actual insecure fallbacks (WASM-JS) use the policy
+- **Clear Documentation**: Explicit distinction between secure and insecure code paths
+- **Fail-Safe Design**: Default behavior prioritizes security over availability
+
+### Platform-Specific Behavior
+
+| Platform | SECURE_ONLY Behavior | ALLOW_INSECURE Behavior |
+|----------|---------------------|-------------------------|
+| **JVM, Android, Apple, JS, Linux, Windows** | Uses secure platform APIs | Same (no insecure fallbacks available) |
+| **WASM-JS (Browser)** | Uses Web Crypto API | Uses Web Crypto API |
+| **WASM-JS (D8)** | Fails with `SecureRandomInitializationException` | Uses enhanced Math.random fallback |
 
 ## Usage
 
@@ -300,11 +355,12 @@ The library follows clean architecture principles:
 The library includes comprehensive testing with automated CI/CD:
 
 ### Test Infrastructure
-- **31 test files** with comprehensive test coverage
+- **35+ test files** with comprehensive test coverage including security scenarios
 - **Statistical validation** (chi-square, entropy, autocorrelation tests)
-- **Security testing** (thread safety, memory security, performance benchmarks)
+- **Security testing** (thread safety, memory security, performance benchmarks, fallback policy validation)
 - **Cross-platform compatibility** testing
-- **100% test pass rate** across all implemented platforms
+- **Fallback policy testing** (secure-by-default behavior, explicit opt-in validation)
+- **100% test pass rate** across all implemented platforms with security enhancements
 
 ### GitHub Actions CI/CD
 - **Linux Testing**: Real tests on Ubuntu runners (latest, 22.04, 24.04)

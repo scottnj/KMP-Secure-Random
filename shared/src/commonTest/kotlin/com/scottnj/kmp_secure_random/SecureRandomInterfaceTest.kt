@@ -11,7 +11,7 @@ import kotlin.test.assertTrue
 
 /**
  * Comprehensive tests for the SecureRandom interface and its factory function.
- * Tests the current placeholder implementations to ensure proper error handling.
+ * Tests the current placeholder implementations and new fallback policy functionality.
  */
 class SecureRandomInterfaceTest {
 
@@ -265,5 +265,88 @@ class SecureRandomInterfaceTest {
         assertTrue(types.all { it == types.first() }, "All instances should be same type")
 
         logger.i { "Thread safety test completed with ${instances.size} instances" }
+    }
+
+    /**
+     * Test that the new fallback policy factory function works across all platforms.
+     */
+    @Test
+    @OptIn(AllowInsecureFallback::class)
+    fun testFallbackPolicyFactoryFunction() {
+        logger.d { "Testing createSecureRandom with fallback policies" }
+
+        // Test SECURE_ONLY policy (should work on all platforms)
+        val secureOnlyResult = createSecureRandom(FallbackPolicy.SECURE_ONLY)
+        assertTrue(secureOnlyResult.isSuccess, "SECURE_ONLY policy should succeed on all platforms")
+
+        val secureOnlyInstance = secureOnlyResult.getOrThrow()
+        assertNotNull(secureOnlyInstance, "SECURE_ONLY should return valid instance")
+
+        // Test ALLOW_INSECURE policy (should work on all platforms, but only WASM-JS uses it)
+        val allowInsecureResult = createSecureRandom(FallbackPolicy.ALLOW_INSECURE)
+        assertTrue(allowInsecureResult.isSuccess, "ALLOW_INSECURE policy should succeed on all platforms")
+
+        val allowInsecureInstance = allowInsecureResult.getOrThrow()
+        assertNotNull(allowInsecureInstance, "ALLOW_INSECURE should return valid instance")
+
+        // Both instances should work for basic operations
+        val secureBytes = ByteArray(8)
+        val insecureBytes = ByteArray(8)
+
+        assertTrue(secureOnlyInstance.nextBytes(secureBytes).isSuccess, "SECURE_ONLY instance should work")
+        assertTrue(allowInsecureInstance.nextBytes(insecureBytes).isSuccess, "ALLOW_INSECURE instance should work")
+    }
+
+    /**
+     * Test backward compatibility of factory functions.
+     */
+    @Test
+    @OptIn(AllowInsecureFallback::class)
+    fun testBackwardCompatibilityOfFactoryFunctions() {
+        logger.d { "Testing backward compatibility" }
+
+        // Original function should still work
+        val originalResult = createSecureRandom()
+        assertTrue(originalResult.isSuccess, "Original createSecureRandom() should still work")
+
+        // Should behave identically to SECURE_ONLY policy
+        val secureOnlyResult = createSecureRandom(FallbackPolicy.SECURE_ONLY)
+        assertTrue(secureOnlyResult.isSuccess, "SECURE_ONLY policy should work")
+
+        val originalInstance = originalResult.getOrThrow()
+        val secureOnlyInstance = secureOnlyResult.getOrThrow()
+
+        // Both should be same type and work identically
+        assertEquals(originalInstance::class, secureOnlyInstance::class, "Should be same implementation type")
+
+        // Test that both work for random generation
+        val originalBytes = ByteArray(16)
+        val secureBytes = ByteArray(16)
+
+        assertTrue(originalInstance.nextBytes(originalBytes).isSuccess, "Original instance should work")
+        assertTrue(secureOnlyInstance.nextBytes(secureBytes).isSuccess, "Secure-only instance should work")
+
+        // Both should generate non-zero bytes
+        assertFalse(originalBytes.all { it == 0.toByte() }, "Original should generate non-zero bytes")
+        assertFalse(secureBytes.all { it == 0.toByte() }, "Secure-only should generate non-zero bytes")
+    }
+
+    /**
+     * Test that FallbackPolicy enum values work correctly.
+     */
+    @Test
+    fun testFallbackPolicyEnumValues() {
+        logger.d { "Testing FallbackPolicy enum" }
+
+        // Test enum values exist
+        assertEquals("SECURE_ONLY", FallbackPolicy.SECURE_ONLY.name)
+        assertEquals("ALLOW_INSECURE", FallbackPolicy.ALLOW_INSECURE.name)
+
+        // Test enum has expected number of values
+        val values = FallbackPolicy.values()
+        assertEquals(2, values.size, "FallbackPolicy should have exactly 2 values")
+
+        assertTrue(values.contains(FallbackPolicy.SECURE_ONLY), "Should contain SECURE_ONLY")
+        assertTrue(values.contains(FallbackPolicy.ALLOW_INSECURE), "Should contain ALLOW_INSECURE")
     }
 }

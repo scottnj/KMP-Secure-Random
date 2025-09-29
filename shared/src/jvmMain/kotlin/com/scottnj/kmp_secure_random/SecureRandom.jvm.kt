@@ -327,6 +327,13 @@ internal class JvmSecureRandomAdapter private constructor(
     }
 }
 
+@AllowInsecureFallback
+actual fun createSecureRandom(fallbackPolicy: FallbackPolicy): SecureRandomResult<SecureRandom> {
+    // JVM platform has no insecure fallbacks - all SecureRandom algorithms are cryptographically secure
+    // fallbackPolicy parameter is ignored as there are no insecure fallbacks to allow
+    return JvmSecureRandomAdapter.create().map { it as SecureRandom }
+}
+
 actual fun createSecureRandom(): SecureRandomResult<SecureRandom> {
     return JvmSecureRandomAdapter.create().map { it as SecureRandom }
 }

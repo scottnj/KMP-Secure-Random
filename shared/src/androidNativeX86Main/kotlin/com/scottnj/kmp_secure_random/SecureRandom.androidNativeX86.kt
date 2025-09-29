@@ -429,6 +429,13 @@ internal class AndroidNativeX86SecureRandomAdapter private constructor() : Secur
     }
 }
 
+@AllowInsecureFallback
+actual fun createSecureRandom(fallbackPolicy: FallbackPolicy): SecureRandomResult<SecureRandom> {
+    // Android Native X86 uses getrandom() → /dev/urandom and has secure fallbacks only
+    // fallbackPolicy parameter is ignored as Android Native provides secure random generation only
+    return createSecureRandom()
+}
+
 actual fun createSecureRandom(): SecureRandomResult<SecureRandom> {
     val logger = Logger.withTag("SecureRandom")
     logger.i { "Creating Android Native x86 SecureRandom..." }

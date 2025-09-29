@@ -81,15 +81,18 @@ The library uses Kotlin Multiplatform's expect/actual mechanism for platform-spe
 
 **[x] Infrastructure**: Kermit logging, Detekt analysis, Kover coverage, OWASP security scanning, Dokka documentation, automated quality gates
 
+**[x] Security Framework**: `@AllowInsecureFallback` opt-in system, `FallbackPolicy` enum, secure-by-default behavior
+
 **[x] Platform Implementation (12/12 Complete):**
 - **JVM, Android, iOS, macOS, tvOS**: Production-ready with platform-specific secure random adapters
 - **watchOS**: Isolated implementation using `arc4random()` (architectural separation)
-- **JavaScript/WASM-JS**: Web Crypto API with Node.js/D8 fallbacks
+- **JavaScript**: Web Crypto API with Node.js crypto (secure-only, no insecure fallbacks)
+- **WASM-JS**: Web Crypto API with explicit opt-in for Math.random fallback (security-enhanced)
 - **Linux**: `getrandom()` syscall + `/dev/urandom` fallback (GitHub Actions validated)
 - **Windows**: `CryptGenRandom` API (GitHub Actions validated)
 - **Android Native**: Production-ready with per-architecture implementation (GitHub Actions validated)
 
-**[x] Quality Metrics**: 31 test files, 80% coverage (target: 90% line, 85% branch), zero static analysis violations, comprehensive CI/CD pipeline
+**[x] Quality Metrics**: 35+ test files, comprehensive fallback policy testing, zero static analysis violations, comprehensive CI/CD pipeline
 
 ## Production Architecture
 
@@ -100,6 +103,44 @@ The library uses Kotlin Multiplatform's expect/actual mechanism for platform-spe
 **Quality Assurance**: Kermit logging, Detekt analysis, Kover coverage, OWASP scanning, Dokka documentation, performance benchmarks
 
 **Implementation Strategy**: Adapter pattern, comprehensive testing (statistical/security/performance), guaranteed thread-safety, secure memory handling
+
+## Security Framework
+
+**Secure Fallback Policy System**: Enhanced security through explicit opt-in for insecure fallbacks
+
+### Factory Functions
+
+**Secure by Default (Recommended)**:
+```kotlin
+// Always secure - fails if secure random unavailable
+val secureRandom = createSecureRandom().getOrThrow()
+```
+
+**Explicit Insecure Fallback (Use with Caution)**:
+```kotlin
+@OptIn(AllowInsecureFallback::class)
+val secureRandom = createSecureRandom(FallbackPolicy.ALLOW_INSECURE).getOrThrow()
+```
+
+### Platform Security Characteristics
+
+| Platform | Primary Method | Secure Fallback | Insecure Fallback |
+|----------|---------------|-----------------|-------------------|
+| **JVM** | `SecureRandom` (various algorithms) | ✅ Multiple secure providers | ❌ None |
+| **Android** | `SHA1PRNG`/`NativePRNG` | ✅ Secure provider chain | ❌ None |
+| **iOS/macOS/tvOS** | `SecRandomCopyBytes` | ✅ None needed | ❌ None |
+| **watchOS** | `arc4random` | ✅ None needed | ❌ None |
+| **JavaScript** | Web Crypto API / Node.js crypto | ✅ None needed | ❌ None |
+| **WASM-JS** | Web Crypto API | ❌ None available | ⚠️ Math.random (opt-in only) |
+| **Linux/Android Native** | `getrandom()` syscall | ✅ `/dev/urandom` | ❌ None |
+| **Windows** | `CryptGenRandom` API | ✅ None needed | ❌ None |
+
+### Security Policy Details
+
+- **`FallbackPolicy.SECURE_ONLY`** (Default): Only cryptographically secure methods allowed
+- **`FallbackPolicy.ALLOW_INSECURE`**: Permits insecure fallbacks with explicit `@OptIn(AllowInsecureFallback)`
+- **Compiler Warnings**: `@RequiresOptIn` ensures developers understand security implications
+- **Platform Enforcement**: Only WASM-JS platform has insecure fallbacks; others ignore policy safely
 
 ## Implementation Roadmap
 
@@ -163,9 +204,15 @@ Each using `getrandom()` + `/dev/urandom` fallback pattern.
 
 ## Recent Achievements [x]
 
-**Native Platform Validation**: Linux, Windows, and Android Native implementations validated on GitHub Actions with real platform cryptographic APIs (Ubuntu runners, Windows Server, NDK cross-compilation)
+**Security Framework**: Implemented secure fallback policy system with `@AllowInsecureFallback` opt-in mechanism for explicit security control
 
-**Production Readiness**: 12/12 platforms complete with comprehensive documentation, MIT licensing, CI/CD pipeline, zero static analysis violations
+**WASM-JS Security Design**: Secure-by-default behavior with explicit opt-in for Math.random fallback, includes compiler warnings for enhanced security awareness
 
-**Security Confirmation**: All implemented platforms use platform-native cryptographic APIs, no custom crypto implementation
+**Comprehensive Testing**: Added fallback policy test coverage across all platforms, validating secure-by-default behavior and insecure opt-in functionality
+
+**Native Platform Validation**: Linux, Windows, and Android Native implementations validated on GitHub Actions with real platform cryptographic APIs
+
+**Production Readiness**: 12/12 platforms complete with enhanced security framework, comprehensive documentation, MIT licensing, CI/CD pipeline
+
+**Security Confirmation**: All implemented platforms use platform-native cryptographic APIs with explicit security boundary enforcement
 

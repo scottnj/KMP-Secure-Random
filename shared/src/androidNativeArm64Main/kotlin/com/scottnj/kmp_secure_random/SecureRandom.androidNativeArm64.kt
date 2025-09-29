@@ -429,6 +429,13 @@ internal class AndroidNativeArm64SecureRandomAdapter private constructor() : Sec
     }
 }
 
+@AllowInsecureFallback
+actual fun createSecureRandom(fallbackPolicy: FallbackPolicy): SecureRandomResult<SecureRandom> {
+    // Android Native ARM64 uses getrandom() → /dev/urandom and has secure fallbacks only
+    // fallbackPolicy parameter is ignored as Android Native provides secure random generation only
+    return createSecureRandom()
+}
+
 actual fun createSecureRandom(): SecureRandomResult<SecureRandom> {
     val logger = Logger.withTag("SecureRandom")
     logger.i { "Creating Android Native ARM64 SecureRandom..." }

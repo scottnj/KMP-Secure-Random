@@ -328,6 +328,13 @@ internal class WatchosSecureRandomAdapter private constructor() : SecureRandom {
     }
 }
 
+@AllowInsecureFallback
+actual fun createSecureRandom(fallbackPolicy: FallbackPolicy): SecureRandomResult<SecureRandom> {
+    // watchOS platform uses arc4random API and has secure fallbacks only
+    // fallbackPolicy parameter is ignored as watchOS provides secure random generation only
+    return createSecureRandom()
+}
+
 actual fun createSecureRandom(): SecureRandomResult<SecureRandom> {
     return WatchosSecureRandomAdapter.create().map { it as SecureRandom }
 }

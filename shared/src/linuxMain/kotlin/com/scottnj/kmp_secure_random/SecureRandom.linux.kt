@@ -429,6 +429,33 @@ internal class LinuxSecureRandomAdapter private constructor() : SecureRandom {
     }
 }
 
+@AllowInsecureFallback
+actual fun createSecureRandom(fallbackPolicy: FallbackPolicy): SecureRandomResult<SecureRandom> {
+    // Linux platform has secure fallbacks only (getrandom → /dev/urandom) - all are cryptographically secure
+    // fallbackPolicy parameter is ignored as there are no insecure fallbacks to allow
+    val logger = Logger.withTag("SecureRandom")
+    logger.i { "Creating Linux SecureRandom..." }
+
+    return try {
+        val result = LinuxSecureRandomAdapter.create()
+        when (result) {
+            is SecureRandomResult.Success -> {
+                logger.i { "✅ Linux SecureRandom created successfully" }
+                SecureRandomResult.success(result.value as SecureRandom)
+            }
+            is SecureRandomResult.Failure -> {
+                logger.e { "❌ Failed to create Linux SecureRandom: ${result.exception.message}" }
+                SecureRandomResult.failure(result.exception)
+            }
+        }
+    } catch (e: Exception) {
+        logger.e(e) { "❌ Exception during Linux SecureRandom creation" }
+        SecureRandomResult.failure(
+            SecureRandomInitializationException("Linux SecureRandom creation failed", e)
+        )
+    }
+}
+
 actual fun createSecureRandom(): SecureRandomResult<SecureRandom> {
     val logger = Logger.withTag("SecureRandom")
     logger.i { "Creating Linux SecureRandom..." }

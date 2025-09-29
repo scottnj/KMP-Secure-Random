@@ -1,6 +1,42 @@
 package com.scottnj.kmp_secure_random
 
 /**
+ * Opt-in requirement for using insecure fallback methods when secure random generation is unavailable.
+ *
+ * This annotation is required when using createSecureRandom with FallbackPolicy.ALLOW_INSECURE.
+ * Using insecure fallbacks compromises cryptographic security and should only be used when:
+ * - Secure random generation is unavailable on the platform
+ * - The use case can tolerate non-cryptographically secure randomness
+ * - You understand the security implications
+ *
+ * @see FallbackPolicy.ALLOW_INSECURE
+ */
+@RequiresOptIn("Allows insecure fallback when secure random unavailable. Understand security implications.")
+@Retention(AnnotationRetention.BINARY)
+annotation class AllowInsecureFallback
+
+/**
+ * Policy for handling situations where secure random generation is unavailable.
+ */
+enum class FallbackPolicy {
+    /**
+     * Only allow cryptographically secure random generation.
+     * Fail with an exception if secure random generation is unavailable.
+     * This is the recommended and default behavior.
+     */
+    SECURE_ONLY,
+
+    /**
+     * Allow fallback to insecure random generation if secure methods are unavailable.
+     * This requires the @AllowInsecureFallback opt-in annotation and should only be used
+     * when you understand the security implications.
+     *
+     * @see AllowInsecureFallback
+     */
+    ALLOW_INSECURE
+}
+
+/**
  * A cryptographically secure random number generator interface for Kotlin Multiplatform.
  *
  * This interface provides access to platform-specific secure random number generation
@@ -98,7 +134,23 @@ interface SecureRandom {
 }
 
 /**
- * Creates a new platform-specific SecureRandom instance.
+ * Creates a new platform-specific SecureRandom instance with the specified fallback policy.
+ *
+ * @param fallbackPolicy The policy for handling situations where secure random generation is unavailable.
+ *                       Defaults to SECURE_ONLY for maximum security.
+ * @return A SecureRandomResult containing a SecureRandom implementation optimized for the current platform, or an error
+ *
+ * @see FallbackPolicy
+ * @see AllowInsecureFallback
+ */
+@AllowInsecureFallback
+expect fun createSecureRandom(fallbackPolicy: FallbackPolicy): SecureRandomResult<SecureRandom>
+
+/**
+ * Creates a new platform-specific SecureRandom instance using secure-only policy.
+ *
+ * This is equivalent to calling createSecureRandom(FallbackPolicy.SECURE_ONLY) and is the recommended
+ * approach for maximum security. It will fail if secure random generation is unavailable.
  *
  * @return A SecureRandomResult containing a SecureRandom implementation optimized for the current platform, or an error
  */
