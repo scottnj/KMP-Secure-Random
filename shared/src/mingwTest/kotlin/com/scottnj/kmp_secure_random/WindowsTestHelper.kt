@@ -107,25 +107,59 @@ internal class WindowsTestHelper private constructor() {
     }
 
     /**
-     * Verifies Windows version compatibility.
+     * Verifies Windows version compatibility using actual Windows API.
      */
+    @OptIn(ExperimentalForeignApi::class)
     fun getWindowsVersion(): WindowsVersionInfo {
-        return try {
-            // Get OS version info (this is a simplified approach)
-            val majorVersion = 0 // Would need proper API call
-            val minorVersion = 0 // Would need proper API call
-            val buildNumber = 0  // Would need proper API call
+        return memScoped {
+            try {
+                logger.d { "Getting Windows version information..." }
 
-            WindowsVersionInfo(
-                majorVersion = majorVersion,
-                minorVersion = minorVersion,
-                buildNumber = buildNumber,
-                supportsCryptAPI = true, // CryptAPI available since Windows 2000
-                supportsBCrypt = majorVersion >= 6 // BCrypt available since Vista (6.0)
-            )
-        } catch (e: Exception) {
-            logger.w(e) { "Failed to get Windows version info" }
-            WindowsVersionInfo(0, 0, 0, false, false)
+                // Use GetVersionExW to get actual Windows version
+                val versionInfo = alloc<OSVERSIONINFOW>()
+                versionInfo.dwOSVersionInfoSize = sizeOf<OSVERSIONINFOW>().toUInt()
+
+                val result = GetVersionExW(versionInfo.ptr)
+
+                if (result != 0) {
+                    val majorVersion = versionInfo.dwMajorVersion.toInt()
+                    val minorVersion = versionInfo.dwMinorVersion.toInt()
+                    val buildNumber = versionInfo.dwBuildNumber.toInt()
+
+                    logger.d { "✅ Windows version detected: $majorVersion.$minorVersion.$buildNumber" }
+
+                    WindowsVersionInfo(
+                        majorVersion = majorVersion,
+                        minorVersion = minorVersion,
+                        buildNumber = buildNumber,
+                        supportsCryptAPI = true, // CryptAPI available since Windows 2000 (5.0+)
+                        supportsBCrypt = majorVersion >= 6 // BCrypt available since Vista (6.0+)
+                    )
+                } else {
+                    val error = GetLastError()
+                    logger.w { "GetVersionExW failed with error: $error" }
+
+                    // Fallback: assume modern Windows with CryptAPI support
+                    WindowsVersionInfo(
+                        majorVersion = 10, // Default to Windows 10+
+                        minorVersion = 0,
+                        buildNumber = 0,
+                        supportsCryptAPI = true,
+                        supportsBCrypt = true
+                    )
+                }
+            } catch (e: Exception) {
+                logger.w(e) { "Exception during Windows version detection" }
+
+                // Fallback: assume modern Windows with full crypto support
+                WindowsVersionInfo(
+                    majorVersion = 10,
+                    minorVersion = 0,
+                    buildNumber = 0,
+                    supportsCryptAPI = true,
+                    supportsBCrypt = true
+                )
+            }
         }
     }
 

@@ -255,7 +255,8 @@ internal class LinuxSecureRandomAdapter private constructor() : SecureRandom {
                           ((bytes[6].toLong() and 0xFF) shl 8) or
                           (bytes[7].toLong() and 0xFF)
 
-            // Convert to [0.0, 1.0) by using 53 bits of precision
+            // Convert to [0.0, 1.0) by using 53 bits of precision (IEEE 754 double mantissa)
+            // Right shift by 11 to get the most significant 53 bits, then divide by 2^53
             val result = (longBits ushr 11).toDouble() / (1L shl 53).toDouble()
             logger.v { "Generated random double" }
             result
@@ -271,7 +272,8 @@ internal class LinuxSecureRandomAdapter private constructor() : SecureRandom {
                          ((bytes[2].toInt() and 0xFF) shl 8) or
                          (bytes[3].toInt() and 0xFF)
 
-            // Convert to [0.0, 1.0) by using 24 bits of precision
+            // Convert to [0.0, 1.0) by using 24 bits of precision (IEEE 754 float mantissa)
+            // Right shift by 8 to get the most significant 24 bits, then divide by 2^24
             val result = (intBits ushr 8).toFloat() / (1 shl 24).toFloat()
             logger.v { "Generated random float" }
             result
@@ -317,6 +319,7 @@ internal class LinuxSecureRandomAdapter private constructor() : SecureRandom {
 
     /**
      * Attempts to use the getrandom() syscall to fill the byte array.
+     * First tries non-blocking to check entropy availability, then falls back to blocking if needed.
      * Returns true if successful, false if the syscall is not available.
      */
     private fun tryGetrandom(bytes: ByteArray): Boolean {
@@ -324,55 +327,42 @@ internal class LinuxSecureRandomAdapter private constructor() : SecureRandom {
             val buffer = allocArray<ByteVar>(bytes.size)
 
             try {
-                val result = syscall(SYS_GETRANDOM, buffer, bytes.size.convert<size_t>(), 0)
+                // First try non-blocking to check if entropy pool is ready
+                logger.v { "Trying non-blocking getrandom() first..." }
+                val nonBlockingResult = syscall(SYS_GETRANDOM, buffer, bytes.size.convert<size_t>(), GRND_NONBLOCK)
 
                 when {
-                    result == bytes.size.toLong() -> {
-                        // Success - copy bytes
+                    nonBlockingResult == bytes.size.toLong() -> {
+                        // Success with non-blocking call
                         for (i in bytes.indices) {
                             bytes[i] = buffer[i]
                         }
-                        logger.v { "Successfully used getrandom() for ${bytes.size} bytes" }
-                        true
+                        logger.v { "Successfully used non-blocking getrandom() for ${bytes.size} bytes" }
+                        return true
                     }
-                    result == -1L -> {
-                        val error = errno
-                        when (error) {
-                            ENOSYS -> {
-                                logger.d { "getrandom() not available (ENOSYS)" }
-                                false
-                            }
-                            EAGAIN -> {
-                                throw SecureRandomGenerationException(
-                                    "getrandom() would block (insufficient entropy)"
-                                )
-                            }
-                            EINTR -> {
-                                throw SecureRandomGenerationException(
-                                    "getrandom() interrupted by signal"
-                                )
-                            }
-                            EFAULT -> {
-                                throw SecureRandomGenerationException(
-                                    "getrandom() buffer fault"
-                                )
-                            }
-                            EINVAL -> {
-                                throw SecureRandomGenerationException(
-                                    "getrandom() invalid parameters"
-                                )
+                    nonBlockingResult == -1L && errno == EAGAIN -> {
+                        // Entropy pool not ready, try blocking call
+                        logger.d { "Non-blocking getrandom() would block, trying blocking call..." }
+                        val result = syscall(SYS_GETRANDOM, buffer, bytes.size.convert<size_t>(), 0)
+
+                        when {
+                            result == bytes.size.toLong() -> {
+                                // Success with blocking call
+                                for (i in bytes.indices) {
+                                    bytes[i] = buffer[i]
+                                }
+                                logger.v { "Successfully used blocking getrandom() for ${bytes.size} bytes" }
+                                return true
                             }
                             else -> {
-                                throw SecureRandomGenerationException(
-                                    "getrandom() failed with errno: $error"
-                                )
+                                // Handle the blocking call result the same way as before
+                                return handleGetrandomResult(result, bytes, buffer)
                             }
                         }
                     }
                     else -> {
-                        throw SecureRandomGenerationException(
-                            "getrandom() returned unexpected value: $result"
-                        )
+                        // Handle the non-blocking result
+                        return handleGetrandomResult(nonBlockingResult, bytes, buffer)
                     }
                 }
             } catch (e: Exception) {
@@ -381,6 +371,62 @@ internal class LinuxSecureRandomAdapter private constructor() : SecureRandom {
             }
         }
     }
+
+    /**
+     * Handles the result of a getrandom() syscall.
+     */
+    private fun handleGetrandomResult(result: Long, bytes: ByteArray, buffer: CArrayPointer<ByteVar>): Boolean {
+        when {
+            result == bytes.size.toLong() -> {
+                // Success - copy bytes
+                for (i in bytes.indices) {
+                    bytes[i] = buffer[i]
+                }
+                logger.v { "Successfully used getrandom() for ${bytes.size} bytes" }
+                return true
+            }
+            result == -1L -> {
+                val error = errno
+                when (error) {
+                    ENOSYS -> {
+                        logger.d { "getrandom() not available (ENOSYS)" }
+                        return false
+                    }
+                    EAGAIN -> {
+                        throw SecureRandomGenerationException(
+                            "getrandom() would block (insufficient entropy)"
+                        )
+                    }
+                    EINTR -> {
+                        throw SecureRandomGenerationException(
+                            "getrandom() interrupted by signal"
+                        )
+                    }
+                    EFAULT -> {
+                        throw SecureRandomGenerationException(
+                            "getrandom() buffer fault"
+                        )
+                    }
+                    EINVAL -> {
+                        throw SecureRandomGenerationException(
+                            "getrandom() invalid parameters"
+                        )
+                    }
+                    else -> {
+                        throw SecureRandomGenerationException(
+                            "getrandom() failed with errno: $error"
+                        )
+                    }
+                }
+            }
+            else -> {
+                throw SecureRandomGenerationException(
+                    "getrandom() returned unexpected value: $result"
+                )
+            }
+        }
+    }
+
 
     /**
      * Reads random bytes from /dev/urandom with proper error handling.

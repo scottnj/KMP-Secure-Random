@@ -6,10 +6,11 @@ import platform.windows.*
 import kotlin.experimental.ExperimentalNativeApi
 
 /**
- * Windows implementation of SecureRandom using CryptGenRandom.
+ * Windows implementation of SecureRandom using BCryptGenRandom.
  *
- * CryptGenRandom is available on Windows 2000 and later and provides
- * cryptographically secure random number generation.
+ * BCryptGenRandom is part of the modern Cryptography API: Next Generation (CNG)
+ * and is the recommended approach for secure random number generation on Windows.
+ * Falls back to legacy CryptGenRandom if CNG is unavailable.
  *
  * This implementation is thread-safe and provides cryptographically secure randomness.
  */
@@ -18,16 +19,52 @@ internal class WindowsSecureRandom : SecureRandom {
 
     private val logger = Logger.withTag("WindowsSecureRandom")
 
-    // CryptAPI context for Windows
+    // CryptAPI context for fallback to legacy API
     private var cryptContext: HCRYPTPROV? = null
+    private var useCngApi: Boolean = true
 
     init {
-        // Initialize CryptAPI (Windows 2000 and later)
-        val cryptResult = tryInitCryptAPI()
-        if (!cryptResult) {
-            logger.w { "Failed to initialize Windows SecureRandom with CryptAPI, will use per-call initialization" }
+        // Test BCryptGenRandom availability first (modern CNG API)
+        val cngResult = testBCryptGenRandom()
+        if (cngResult) {
+            logger.d { "Windows SecureRandom initialized with BCryptGenRandom (CNG API)" }
+            useCngApi = true
         } else {
-            logger.d { "Windows SecureRandom initialized with CryptGenRandom" }
+            logger.w { "BCryptGenRandom not available, falling back to legacy CryptGenRandom" }
+            useCngApi = false
+
+            // Initialize legacy CryptAPI as fallback
+            val cryptResult = tryInitCryptAPI()
+            if (!cryptResult) {
+                logger.w { "Failed to initialize legacy CryptAPI, will use per-call initialization" }
+            } else {
+                logger.d { "Windows SecureRandom initialized with legacy CryptGenRandom" }
+            }
+        }
+    }
+
+    private fun testBCryptGenRandom(): Boolean = memScoped {
+        try {
+            // Test BCryptGenRandom with a small buffer
+            val testBuffer = ByteArray(4)
+            testBuffer.usePinned { pinned ->
+                val buffer = pinned.addressOf(0).reinterpret<UByteVar>()
+
+                // Try calling BCryptGenRandom directly (available on Windows Vista and later)
+                // BCryptGenRandom(nullptr, buffer, size, 0) for default system RNG
+                val result = platform.windows.BCryptGenRandom(
+                    null, // Use default system RNG
+                    buffer,
+                    testBuffer.size.toUInt(),
+                    0u // Default flags
+                )
+
+                // Success if result is 0 (STATUS_SUCCESS)
+                return result == 0
+            }
+        } catch (e: Exception) {
+            logger.d { "BCryptGenRandom test failed: ${e.message}" }
+            return false
         }
     }
 
@@ -58,6 +95,7 @@ internal class WindowsSecureRandom : SecureRandom {
 
     /**
      * Fills the given byte array with cryptographically secure random bytes.
+     * Uses BCryptGenRandom (CNG API) as primary method, with legacy CryptGenRandom as fallback.
      */
     private fun fillBytesSecurely(bytes: ByteArray): Unit = memScoped {
         if (bytes.isEmpty()) return
@@ -66,7 +104,29 @@ internal class WindowsSecureRandom : SecureRandom {
             val buffer = pinned.addressOf(0).reinterpret<UByteVar>()
             val size = bytes.size.toUInt()
 
-            // Try CryptAPI
+            // Try modern BCryptGenRandom first (Windows Vista and later)
+            if (useCngApi) {
+                try {
+                    val result = platform.windows.BCryptGenRandom(
+                        null, // Use default system RNG
+                        buffer,
+                        size,
+                        0u // Default flags
+                    )
+
+                    if (result == 0) { // STATUS_SUCCESS
+                        return
+                    }
+
+                    logger.w { "BCryptGenRandom failed with status: $result, falling back to legacy API" }
+                    // Fall through to legacy CryptGenRandom
+                } catch (e: Exception) {
+                    logger.w { "BCryptGenRandom exception: ${e.message}, falling back to legacy API" }
+                    // Fall through to legacy CryptGenRandom
+                }
+            }
+
+            // Try legacy CryptAPI with context
             if (cryptContext != null) {
                 val result = CryptGenRandom(
                     cryptContext!!,
@@ -224,7 +284,8 @@ internal class WindowsSecureRandom : SecureRandom {
                           ((bytes[6].toLong() and 0xFF) shl 8) or
                           (bytes[7].toLong() and 0xFF)
 
-            // Convert to [0.0, 1.0) by using 53 bits of precision
+            // Convert to [0.0, 1.0) by using 53 bits of precision (IEEE 754 double mantissa)
+            // Right shift by 11 to get the most significant 53 bits, then divide by 2^53
             val result = (longBits ushr 11).toDouble() / (1L shl 53).toDouble()
             logger.v { "Generated random double" }
             result
@@ -240,7 +301,8 @@ internal class WindowsSecureRandom : SecureRandom {
                          ((bytes[2].toInt() and 0xFF) shl 8) or
                          (bytes[3].toInt() and 0xFF)
 
-            // Convert to [0.0, 1.0) by using 24 bits of precision
+            // Convert to [0.0, 1.0) by using 24 bits of precision (IEEE 754 float mantissa)
+            // Right shift by 8 to get the most significant 24 bits, then divide by 2^24
             val result = (intBits ushr 8).toFloat() / (1 shl 24).toFloat()
             logger.v { "Generated random float" }
             result

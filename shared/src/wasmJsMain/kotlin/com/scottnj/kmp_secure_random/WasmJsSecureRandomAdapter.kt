@@ -42,13 +42,20 @@ private val mathRandomByte: () -> Int = js("""() => {
 }""")
 
 /**
- * WASM-JS adapter implementation using Web Crypto API.
+ * WASM-JS adapter implementation using Web Crypto API with secure fallback policy.
  *
  * This implementation provides secure random number generation for WASM-JS by:
  * - Using simplified crypto.getRandomValues() calls for WASM-JS compatibility
  * - Following experimental WASM-JS interop constraints
  * - Using basic JsAny types to avoid complex type mapping issues
- * - Supporting secure-only or insecure fallback policies
+ * - Supporting secure-by-default with explicit opt-in for insecure fallbacks
+ *
+ * **Security Policy:**
+ * - Default (`FallbackPolicy.SECURE_ONLY`): Only uses Web Crypto API, fails if unavailable
+ * - Opt-in (`FallbackPolicy.ALLOW_INSECURE`): Falls back to Math.random() when Web Crypto unavailable
+ *
+ * ⚠️  **CRITICAL:** Math.random() fallback is NOT cryptographically secure and requires
+ * explicit `@OptIn(AllowInsecureFallback)` annotation. Never use for security-sensitive operations.
  */
 @OptIn(ExperimentalWasmJsInterop::class)
 internal class WasmJsSecureRandomAdapter private constructor(
@@ -395,6 +402,30 @@ internal class WasmJsSecureRandomAdapter private constructor(
 
     /**
      * Internal helper method that allows insecure Math.random fallback when explicitly requested.
+     *
+     * ⚠️  **CRITICAL SECURITY WARNING** ⚠️
+     *
+     * The Math.random() fallback is **NOT CRYPTOGRAPHICALLY SECURE** and should NEVER be used for:
+     * - Password generation, reset tokens, or authentication secrets
+     * - Cryptographic keys, initialization vectors, or nonces
+     * - Session tokens, CSRF tokens, or any security-sensitive identifiers
+     * - Random salts for password hashing or other cryptographic operations
+     * - Any application where unpredictable randomness is required for security
+     *
+     * **Acceptable use cases for Math.random() fallback (non-security contexts only):**
+     * - Generating unique IDs for UI elements or non-critical tracking
+     * - Randomization for games, animations, or visual effects
+     * - Statistical sampling for non-sensitive data analysis
+     * - Testing and development environments (with explicit awareness of limitations)
+     *
+     * **Technical limitations:**
+     * - Uses deterministic PRNG algorithms that can be predicted
+     * - May have short periods and observable patterns
+     * - Can be seeded or influenced by external factors
+     * - Statistical properties may not meet cryptographic standards
+     *
+     * Even with XOR enhancement, the underlying entropy source remains non-cryptographic.
+     * This fallback exists solely for compatibility with constrained WASM environments like D8.
      */
     private fun fillBytesWithInsecureFallback(bytes: ByteArray) {
         try {
@@ -410,14 +441,18 @@ internal class WasmJsSecureRandomAdapter private constructor(
 
                 logger.v { "Successfully generated ${bytes.size} random bytes using WASM-JS Web Crypto API" }
             } else {
-                // Fallback to improved Math.random for environments like D8 (INSECURE)
-                logger.w { "Web Crypto API not available, using enhanced Math.random fallback (NOT CRYPTOGRAPHICALLY SECURE)" }
+                // ⚠️ INSECURE FALLBACK: Math.random() - NOT CRYPTOGRAPHICALLY SECURE ⚠️
+                logger.w {
+                    "⚠️ SECURITY WARNING: Web Crypto API unavailable, using Math.random() fallback. " +
+                    "This is NOT CRYPTOGRAPHICALLY SECURE and should NEVER be used for passwords, keys, " +
+                    "tokens, or any security-sensitive operations! Only suitable for non-security use cases."
+                }
 
                 for (i in bytes.indices) {
                     bytes[i] = mathRandomByte().toByte()
                 }
 
-                logger.v { "Generated ${bytes.size} random bytes using WASM-JS enhanced Math.random fallback (INSECURE)" }
+                logger.v { "Generated ${bytes.size} random bytes using Math.random() fallback (⚠️ INSECURE - not suitable for cryptographic use)" }
             }
         } catch (e: Exception) {
             logger.e(e) { "Failed to generate random bytes in WASM-JS environment" }

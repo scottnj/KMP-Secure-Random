@@ -131,12 +131,17 @@ internal class JvmSecureRandomAdapter private constructor(
                         return@validateAndExecute 0L
                     }
 
-                    // Use rejection sampling for unbiased results
+                    // Use rejection sampling to eliminate modulo bias
+                    // Calculate the largest multiple of bound that fits in positive long range
+                    val maxValidValue = Long.MAX_VALUE - (Long.MAX_VALUE % bound)
+
+                    var candidate: Long
                     var result: Long
                     do {
-                        result = javaSecureRandom.nextLong() and Long.MAX_VALUE // Make positive
-                        result %= bound
-                    } while (result < 0) // This shouldn't happen with the mask above, but be safe
+                        candidate = javaSecureRandom.nextLong() and Long.MAX_VALUE // Make positive
+                    } while (candidate >= maxValidValue) // Reject values that would introduce bias
+
+                    result = candidate % bound
 
                     logger.v { "Generated random long with bound $bound: $result" }
                     result
@@ -165,14 +170,19 @@ internal class JvmSecureRandomAdapter private constructor(
                         return@validateAndExecute min
                     }
 
-                    // Generate random in range using simple modulo approach
+                    // Use rejection sampling to eliminate modulo bias
+                    // Calculate the largest multiple of range that fits in positive long range
+                    val maxValidValue = Long.MAX_VALUE - (Long.MAX_VALUE % range)
+
+                    var candidate: Long
                     var result: Long
                     do {
-                        result = javaSecureRandom.nextLong() and Long.MAX_VALUE
-                        result %= range
-                    } while (result < 0)
+                        candidate = javaSecureRandom.nextLong() and Long.MAX_VALUE // Make positive
+                    } while (candidate >= maxValidValue) // Reject values that would introduce bias
 
+                    result = candidate % range
                     result += min
+
                     logger.v { "Generated random long in range [$min, $max): $result" }
                     result
                 } catch (e: Exception) {

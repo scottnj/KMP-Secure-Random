@@ -40,6 +40,68 @@ class LinuxSecureRandomAdapterTest {
     }
 
     /**
+     * Test that verifies the non-blocking getrandom() strategy works properly.
+     * This test ensures our entropy detection and fallback mechanism operates correctly.
+     */
+    @Test
+    fun testGetrandomNonBlockingStrategy() {
+        // Create multiple instances to test the initialization process
+        repeat(5) {
+            val result = createSecureRandom()
+            assertTrue(result is SecureRandomResult.Success, "Linux SecureRandom creation should succeed")
+
+            val adapter = result.value
+
+            // Generate random data to ensure the non-blocking strategy works
+            val bytes = ByteArray(64)
+            val randomResult = adapter.nextBytes(bytes)
+            assertTrue(randomResult is SecureRandomUnitResult.Success, "Random generation should succeed")
+
+            // Verify the data is not all zeros (very high probability)
+            assertFalse(bytes.all { it == 0.toByte() }, "Random bytes should not all be zero")
+
+            // Test rapid successive calls (this would fail if we hit blocking behavior)
+            repeat(10) { i ->
+                val quickBytes = ByteArray(4)
+                val quickResult = adapter.nextBytes(quickBytes)
+                assertTrue(quickResult is SecureRandomUnitResult.Success, "Quick call $i should succeed")
+            }
+        }
+
+        println("Linux getrandom() non-blocking strategy test passed")
+    }
+
+    /**
+     * Test that verifies getrandom() and /dev/urandom fallback robustness.
+     */
+    @Test
+    fun testLinuxEntropySourceResilience() {
+        // Test multiple consecutive random generations to ensure stable operation
+        val results = mutableListOf<ByteArray>()
+
+        repeat(20) {
+            val bytes = ByteArray(32)
+            val result = secureRandom.nextBytes(bytes)
+            assertTrue(result is SecureRandomUnitResult.Success, "All entropy source calls should succeed")
+            results.add(bytes)
+        }
+
+        // Verify all results are unique (very high probability)
+        val uniqueResults = results.map { it.contentToString() }.toSet()
+        assertTrue(
+            uniqueResults.size >= 18, // Allow for very small chance of collision
+            "Linux entropy sources should produce diverse outputs: ${uniqueResults.size}/20"
+        )
+
+        // Test larger byte array generation
+        val largeBytes = ByteArray(1024)
+        val largeResult = secureRandom.nextBytes(largeBytes)
+        assertTrue(largeResult is SecureRandomUnitResult.Success, "Large byte array generation should succeed")
+
+        println("Linux entropy source resilience test passed with ${uniqueResults.size}/20 unique results")
+    }
+
+    /**
      * Test that verifies the specific Linux syscall number (318) is being used.
      */
     @Test

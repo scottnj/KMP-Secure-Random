@@ -246,25 +246,31 @@ class SecureRandomInterfaceTest {
     }
 
     @Test
-    fun testThreadSafetyOfFactory() {
-        logger.d { "Testing thread safety of createSecureRandom factory" }
+    fun testFactoryConsistencyAndMultipleInstances() {
+        logger.d { "Testing createSecureRandom factory consistency" }
 
-        // Test that multiple calls in sequence work properly
+        // Test that multiple calls in sequence work properly and create distinct instances
         val results = (1..10).map { createSecureRandom() }
 
         assertTrue(results.all { it.isSuccess }, "All factory calls should succeed")
 
         val instances = results.map { it.getOrThrow() }
 
-        // Verify all instances are distinct
+        // Verify all instances are distinct objects
         val distinctInstances = instances.distinct()
-        assertEquals(instances.size, distinctInstances.size, "All instances should be distinct")
+        assertEquals(instances.size, distinctInstances.size, "All instances should be distinct objects")
 
-        // Verify all instances are same type
+        // Verify all instances are same type (same platform implementation)
         val types = instances.map { it::class }
         assertTrue(types.all { it == types.first() }, "All instances should be same type")
 
-        logger.i { "Thread safety test completed with ${instances.size} instances" }
+        // Verify all instances are functional
+        instances.forEach { instance ->
+            val testResult = instance.nextBytes(4)
+            assertTrue(testResult.isSuccess, "All instances should be functional")
+        }
+
+        logger.i { "Factory consistency test completed with ${instances.size} distinct instances" }
     }
 
     /**

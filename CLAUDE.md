@@ -75,7 +75,7 @@ The library uses Kotlin Multiplatform's expect/actual mechanism for platform-spe
 - **Common interface**: `SecureRandom` interface defined in `commonMain` with `createSecureRandom()` factory function
 - **Platform implementations**: Each target uses platform-specific secure random APIs via expect/actual pattern
 - **Current Status**: 12 of 12 platforms fully implemented with production-ready secure random generation (100% platform coverage)
-- **Test framework**: Comprehensive test suite with 31 test files covering statistical validation, security, and performance
+- **Test framework**: Optimized test suite with ~30 focused test files covering statistical validation, security, and platform-specific API verification
 
 ## Current Implementation Status
 
@@ -84,15 +84,15 @@ The library uses Kotlin Multiplatform's expect/actual mechanism for platform-spe
 **[x] Security Framework**: `@AllowInsecureFallback` opt-in system, `FallbackPolicy` enum, secure-by-default behavior
 
 **[x] Platform Implementation (12/12 Complete):**
-- **JVM, Android, iOS, macOS, tvOS**: Production-ready with platform-specific secure random adapters
+- **JVM, Android, iOS, macOS, tvOS**: Production-ready with rejection sampling for modulo bias elimination
 - **watchOS**: Isolated implementation using `arc4random()` (architectural separation)
 - **JavaScript**: Web Crypto API with Node.js crypto (secure-only, no insecure fallbacks)
-- **WASM-JS**: Web Crypto API with explicit opt-in for Math.random fallback (security-enhanced)
-- **Linux**: `getrandom()` syscall + `/dev/urandom` fallback (GitHub Actions validated)
-- **Windows**: `CryptGenRandom` API (GitHub Actions validated)
+- **WASM-JS**: Web Crypto API with comprehensive security warnings for Math.random fallback
+- **Linux**: `getrandom()` syscall with non-blocking entropy detection + `/dev/urandom` fallback
+- **Windows**: Modern `BCryptGenRandom` (CNG API) with legacy `CryptGenRandom` fallback
 - **Android Native**: Production-ready with per-architecture implementation (GitHub Actions validated)
 
-**[x] Quality Metrics**: 35+ test files, comprehensive fallback policy testing, zero static analysis violations, comprehensive CI/CD pipeline
+**[x] Quality Metrics**: Optimized test suite (~30 focused test files), comprehensive fallback policy testing, zero static analysis violations, enhanced platform-specific validation, comprehensive CI/CD pipeline
 
 ## Production Architecture
 
@@ -133,7 +133,7 @@ val secureRandom = createSecureRandom(FallbackPolicy.ALLOW_INSECURE).getOrThrow(
 | **JavaScript** | Web Crypto API / Node.js crypto | ✅ None needed | ❌ None |
 | **WASM-JS** | Web Crypto API | ❌ None available | ⚠️ Math.random (opt-in only) |
 | **Linux/Android Native** | `getrandom()` syscall | ✅ `/dev/urandom` | ❌ None |
-| **Windows** | `CryptGenRandom` API | ✅ None needed | ❌ None |
+| **Windows** | `BCryptGenRandom` (CNG API) | ✅ `CryptGenRandom` (legacy) | ❌ None |
 
 ### Security Policy Details
 
@@ -198,8 +198,8 @@ Each using `getrandom()` + `/dev/urandom` fallback pattern.
 **Innovation**: Multi-source XOR technique passes statistical tests in constrained environments
 
 ### Native Platforms GitHub Actions Validation [x]
-**Linux**: `LinuxSecureRandomAdapter` using `getrandom()` syscall + `/dev/urandom` fallback, validated on Ubuntu
-**Windows**: `WindowsSecureRandom` using `CryptGenRandom` API, validated on Windows Server
+**Linux**: `LinuxSecureRandomAdapter` using `getrandom()` syscall with non-blocking entropy detection + `/dev/urandom` fallback, validated on Ubuntu
+**Windows**: `WindowsSecureRandom` using modern `BCryptGenRandom` (CNG) with `CryptGenRandom` fallback, validated on Windows Server
 **Result**: Production-ready native implementations confirmed on real machines
 
 ## Recent Achievements [x]
@@ -216,9 +216,38 @@ Each using `getrandom()` + `/dev/urandom` fallback pattern.
 
 **Security Confirmation**: All implemented platforms use platform-native cryptographic APIs with explicit security boundary enforcement
 
+**Mathematical Correctness Enhancement**: Implemented proper rejection sampling in JVM platform to eliminate modulo bias in bounded random generation, ensuring uniform statistical distribution for all integer and long ranges
+
+**Windows API Modernization**: Migrated from legacy CryptGenRandom to modern BCryptGenRandom (CNG API) as primary method with intelligent fallback, aligning with Microsoft's current cryptographic recommendations
+
+**Linux Entropy Optimization**: Enhanced getrandom() syscall implementation with non-blocking entropy detection to prevent startup hangs in low-entropy environments, improving reliability on embedded systems and VMs
+
+**WASM-JS Security Documentation**: Added comprehensive security warnings and usage guidelines for Math.random() fallback, including explicit examples of safe vs unsafe use cases to prevent cryptographic misuse
+
 **GitHub Actions Workflow Optimization**: Consolidated 4 duplicate workflows into 2 optimized workflows - main CI/CD pipeline (`ci.yml`) for compilation and core testing across all 12 platforms, and dedicated platform validation (`platform-validation.yml`) for native API testing. Eliminated redundancy and improved CI efficiency for KMP development.
 
 **Architecture-Specific API Verification**: Enhanced test suite with direct syscall/API verification - tests now actually verify syscall numbers (ARM64 #278, ARM32 #384, x86 #355, x64 #318), Windows CryptGenRandom API calls, Apple SecRandomCopyBytes usage, and Linux getrandom() with kernel version detection. Tests confirm actual platform API usage rather than just functional correctness.
 
 **CI Performance Optimization**: Added NVD API key support for 10x faster dependency scanning, implemented timeout protection, created quick-check workflow for PRs. Reduced security scan time from 25+ minutes to 2-5 minutes with proper API key configuration.
+
+**Comprehensive Test Suite Optimization**: Systematically refactored entire test suite for quality and maintainability - eliminated ~2000 lines of redundant tests across all platforms while enhancing platform-specific validation. Removed misleading thread safety tests, fixed critical gaps in Android Native architecture tests, added Web Crypto API verification for JavaScript/WASM-JS, enhanced TypedArray integration testing, and improved Windows version detection. Result: focused test suite with ~30 test files providing comprehensive platform validation without redundancy.
+
+### Detailed Test Suite Improvements [x]
+
+**Test Redundancy Elimination**: Removed ~2000 lines of duplicate basic functionality tests across all platform-specific test files, keeping only platform-specific validation while ensuring commonTest covers all basic operations.
+
+**Platform-Specific Enhancements**:
+- **WASM-JS**: Enhanced FallbackPolicy testing with Web Crypto API verification, removed 292-line redundant integration test
+- **JavaScript**: Complete rewrite with TypedArray (Uint8Array) integration testing, Web Crypto/Node.js crypto detection, removed 237-line redundant integration test
+- **iOS**: Focused on SecRandomCopyBytes Security.framework integration, iOS-specific memory management, entropy quality verification
+- **Windows**: Enhanced Windows CryptAPI verification, crypto provider testing, improved version detection with actual GetVersionExW() API calls
+- **Android Native (ARM64/X86/X64)**: Fixed critical gaps with comprehensive syscall verification, per-architecture platform validation
+
+**Thread Safety Test Corrections**: Fixed misleading `testThreadSafetyOfFactory()` in commonTest - renamed to `testFactoryConsistencyAndMultipleInstances()` to accurately reflect sequential (not concurrent) testing.
+
+**Integration Test Cleanup**: Removed redundant integration test files (`WasmJsSecureRandomIntegrationTest.kt`, `JsSecureRandomIntegrationTest.kt`) containing 500+ lines of duplicate functionality already covered by focused platform tests and commonTest.
+
+**Windows API Fixes**: Corrected broken `getWindowsVersion()` function in WindowsTestHelper.kt - replaced hardcoded 0 values with actual `GetVersionExW()` Windows API calls for proper version detection.
+
+**Result**: Maintainable test suite with enhanced platform-specific validation, eliminated redundancy, and accurate test naming/functionality alignment.
 

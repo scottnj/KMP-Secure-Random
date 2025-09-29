@@ -159,7 +159,7 @@ val secureRandom = createSecureRandom(FallbackPolicy.ALLOW_INSECURE).getOrThrow(
 - **Thread-Safe**: All implementations are guaranteed thread-safe
 - **Cross-Platform API**: Consistent interface across all platforms
 - **Statistical Quality**: Passes rigorous statistical tests (chi-square, monobit frequency, entropy analysis)
-- **Production Ready**: Comprehensive test suite with 35+ test files covering all platforms and security scenarios
+- **Production Ready**: Optimized test suite with ~30 focused test files covering all platforms and security scenarios
 
 ## Quick Start
 
@@ -355,7 +355,7 @@ The library follows clean architecture principles:
 The library includes comprehensive testing with automated CI/CD:
 
 ### Test Infrastructure
-- **35+ test files** with comprehensive test coverage including security scenarios
+- **~30 focused test files** with comprehensive platform-specific test coverage including security scenarios
 - **Statistical validation** (chi-square, entropy, autocorrelation, monobit frequency tests)
 - **Architecture verification** (direct syscall/API testing - validates actual syscall numbers and API calls)
 - **Security testing** (thread safety, memory security, performance benchmarks, fallback policy validation)
