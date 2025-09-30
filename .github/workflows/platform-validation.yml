@@ -160,11 +160,14 @@ jobs:
       - name: Validate Windows Security Implementation
         run: |
           echo "🔒 Validating Windows security implementation..."
-          echo "✓ Checking for CryptGenRandom API usage..."
-          findstr /n "CryptGenRandom\|advapi32" shared\src\mingwMain\kotlin\com\scottnj\kmp_secure_random\SecureRandom.mingw.kt || echo "Not found"
+          echo "✓ Checking for BCryptGenRandom (modern CNG API) usage..."
+          findstr /n "BCryptGenRandom" shared\src\mingwMain\kotlin\com\scottnj\kmp_secure_random\WindowsSecureRandomAdapter.kt || echo "Not found"
+
+          echo "✓ Checking for CryptGenRandom (legacy fallback) usage..."
+          findstr /n "CryptGenRandom" shared\src\mingwMain\kotlin\com\scottnj\kmp_secure_random\WindowsSecureRandomAdapter.kt || echo "Not found"
 
           echo "✓ Checking for proper Windows error handling..."
-          findstr /n "GetLastError\|ERROR_" shared\src\mingwMain\kotlin\com\scottnj\kmp_secure_random\SecureRandom.mingw.kt || echo "Not found"
+          findstr /n "GetLastError" shared\src\mingwMain\kotlin\com\scottnj\kmp_secure_random\WindowsSecureRandomAdapter.kt || echo "Not found"
         shell: cmd
 
       - name: Upload Windows Test Results
@@ -287,7 +290,7 @@ jobs:
           echo ""
           echo "📊 Native Platform Integration Summary:"
           echo "  Linux X64: ✅ getrandom() + /dev/urandom fallback"
-          echo "  Windows (MinGW): ✅ CryptGenRandom API"
+          echo "  Windows (MinGW): ✅ BCryptGenRandom (CNG) + CryptGenRandom fallback"
           echo "  Android Native ARM32: ✅ syscall #384, 32-bit UInt"
           echo "  Android Native ARM64: ✅ syscall #278, 64-bit ULong"
           echo "  Android Native x86: ✅ syscall #355, 32-bit UInt"
@@ -321,7 +324,7 @@ jobs:
             echo "🎉 All native platform validations successful!"
             echo ""
             echo "✅ Linux: Real getrandom() syscalls + /dev/urandom fallback tested"
-            echo "✅ Windows: Real CryptGenRandom API tested"
+            echo "✅ Windows: Real BCryptGenRandom (CNG) + CryptGenRandom fallback tested"
             echo "✅ Android Native: All 4 architectures with correct syscalls"
             echo "✅ Integration: All platforms compile together successfully"
             echo "✅ Security: All use platform-native cryptographic APIs"
