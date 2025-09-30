@@ -316,7 +316,7 @@ class NistSP80022AdvancedTests {
      * Root cause: Uncertain - may be Ti normalization, probability distribution, or category boundaries.
      * The Berlekamp-Massey algorithm implementation is correct and functional.
      */
-    @kotlin.test.Ignore("Requires calibration against NIST reference implementation")
+    @kotlin.test.Ignore
     @Test
     fun testLinearComplexity() {
         val results = mutableListOf<Pair<Double, String>>()
