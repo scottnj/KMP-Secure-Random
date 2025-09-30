@@ -255,3 +255,5 @@ Each using `getrandom()` + `/dev/urandom` fallback pattern.
 
 **Windows Workflow Validation Fix**: Corrected platform-validation.yml to validate Windows implementation in the correct file (WindowsSecureRandomAdapter.kt instead of SecureRandom.mingw.kt). Updated validation to check for both BCryptGenRandom (modern CNG API) and CryptGenRandom (legacy fallback), matching the actual Windows API modernization architecture.
 
+**OWASP Dependency-Check Plugin Upgrade**: Upgraded from version 10.0.4 to 12.1.6 to resolve CVSS v4.0 schema parsing failures. The older version couldn't parse newer NVD vulnerability entries containing CVSS v4 fields (specifically the "SAFETY" enum value in ModifiedCiaType), causing analysis failures with IllegalArgumentException. Version 12.0.0+ includes native CVSS v4 support, eliminating JSON deserialization errors during security scans.
+
