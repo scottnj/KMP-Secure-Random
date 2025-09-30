@@ -1,15 +1,13 @@
 name: Platform Validation
 
 on:
-  push:
-    branches: [ main, develop ]
-    paths:
-      - 'shared/src/linuxMain/**'
-      - 'shared/src/mingwMain/**'
-      - 'shared/src/androidNative*Main/**'
-      - 'shared/src/commonMain/**'
-      - 'shared/build.gradle.kts'
-      - '.github/workflows/platform-validation.yml'
+  # Run after CI/CD Pipeline completes successfully
+  workflow_run:
+    workflows: ["CI/CD Pipeline"]
+    types: [completed]
+    branches: [main, develop]
+
+  # Validate native platform changes in pull requests
   pull_request:
     branches: [ main ]
     paths:
@@ -18,10 +16,9 @@ on:
       - 'shared/src/androidNative*Main/**'
       - 'shared/src/commonMain/**'
       - 'shared/build.gradle.kts'
-  workflow_run:
-    workflows: ["CI/CD Pipeline"]
-    types: [completed]
-    branches: [main, develop]
+
+  # Allow manual triggering
+  workflow_dispatch:
 
 env:
   GRADLE_OPTS: -Dorg.gradle.daemon=false -Dorg.gradle.parallel=true -Dorg.gradle.caching=true
