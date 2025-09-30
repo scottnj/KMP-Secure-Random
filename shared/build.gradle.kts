@@ -61,7 +61,13 @@ kotlin {
     js(IR) {
         outputModuleName = "kmp-secure-random"
         browser()
-        nodejs()
+        nodejs {
+            testTask {
+                useMocha {
+                    timeout = "10s"  // Increase from default 2s for computationally expensive NIST DFT test
+                }
+            }
+        }
         binaries.library()
         generateTypeScriptDefinitions()
         compilerOptions {
