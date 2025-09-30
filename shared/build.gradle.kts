@@ -232,8 +232,20 @@ dependencyCheck {
     outputDirectory = "${layout.buildDirectory.get()}/reports/dependency-check"
     format = org.owasp.dependencycheck.reporting.ReportGenerator.Format.ALL.toString()
     suppressionFile = "$projectDir/dependency-check-suppressions.xml"
+
+    // Configure to use Gradle's dependency resolution instead of re-downloading
+    // This prevents redundant Maven Central downloads and timeouts
+    scanConfigurations = listOf(
+        "jvmRuntimeClasspath",
+        "jvmCompileClasspath",
+        "androidDebugRuntimeClasspath",
+        "androidReleaseRuntimeClasspath"
+    )
+
     analyzers {
-        centralEnabled = true
+        // Disable Central Analyzer - we're using Gradle's dependency resolution instead
+        // This prevents redundant downloads from Maven Central
+        centralEnabled = false
         ossIndex {
             enabled = true
         }
