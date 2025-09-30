@@ -387,7 +387,117 @@ tasks.register("owaspDependencyCheckSmokeTest") {
         println("   📄 Suppressions file: ${suppressionsFile.absolutePath} (${suppressionsFile.length()} bytes)")
         println("   📁 Output directory: ${outputDirectory.absolutePath}")
         println("   ⚙️  Configuration validated in build.gradle.kts")
-        println("   🔧 Plugin properly loaded and configured for vulnerability scanning")
+    }
+}
+
+// ==================== Statistical Testing Tasks ====================
+
+// NIST SP 800-22 Core Tests
+val nistCoreTestsTask = tasks.register<Test>("nistCoreTests") {
+    group = "verification"
+    description = "Run NIST SP 800-22 Core statistical tests (5 tests)"
+    testClassesDirs = tasks.named<Test>("jvmTest").get().testClassesDirs
+    classpath = tasks.named<Test>("jvmTest").get().classpath
+
+    filter {
+        includeTestsMatching("com.scottnj.kmp_secure_random.nist.NistSP80022CoreTests")
+    }
+
+    doFirst {
+        println("=" .repeat(70))
+        println("Running NIST SP 800-22 Core Tests")
+        println("=" .repeat(70))
+        println("Tests: Frequency within Block, Runs, Longest Run, Binary Matrix Rank, Cumulative Sums")
+        println("Significance level: α = 0.01 (99% confidence)")
+        println("=" .repeat(70))
+    }
+}
+
+// NIST SP 800-22 Advanced Tests
+val nistAdvancedTestsTask = tasks.register<Test>("nistAdvancedTests") {
+    group = "verification"
+    description = "Run NIST SP 800-22 Advanced statistical tests (5 tests)"
+    testClassesDirs = tasks.named<Test>("jvmTest").get().testClassesDirs
+    classpath = tasks.named<Test>("jvmTest").get().classpath
+
+    filter {
+        includeTestsMatching("com.scottnj.kmp_secure_random.nist.NistSP80022AdvancedTests")
+    }
+
+    doFirst {
+        println("=" .repeat(70))
+        println("Running NIST SP 800-22 Advanced Tests")
+        println("=" .repeat(70))
+        println("Tests: DFT Spectral, Approximate Entropy, Serial, Linear Complexity, Maurer's Universal")
+        println("Significance level: α = 0.01 (99% confidence)")
+        println("Note: Linear Complexity test currently disabled pending calibration")
+        println("=" .repeat(70))
+    }
+}
+
+// All NIST Tests
+tasks.register("nistTests") {
+    group = "verification"
+    description = "Run all NIST SP 800-22 statistical tests (core + advanced)"
+
+    dependsOn(nistCoreTestsTask, nistAdvancedTestsTask)
+
+    doFirst {
+        println("=" .repeat(70))
+        println("Running Complete NIST SP 800-22 Test Suite")
+        println("=" .repeat(70))
+    }
+}
+
+// FIPS 140-2 Compliance Tests
+tasks.register<Test>("fipsTests") {
+    group = "verification"
+    description = "Run FIPS 140-2 compliance tests (4 required tests + full compliance)"
+    testClassesDirs = tasks.named<Test>("jvmTest").get().testClassesDirs
+    classpath = tasks.named<Test>("jvmTest").get().classpath
+
+    filter {
+        includeTestsMatching("com.scottnj.kmp_secure_random.fips.FIPS1402ComplianceTests")
+    }
+
+    doFirst {
+        println("=" .repeat(70))
+        println("Running FIPS 140-2 Compliance Tests")
+        println("=" .repeat(70))
+        println("Tests: Monobit, Poker, Runs, Long Run")
+        println("Test sequence: 20,000 bits per iteration")
+        println("=" .repeat(70))
+    }
+}
+
+// Full compliance report
+tasks.register<Test>("complianceReport") {
+    group = "verification"
+    description = "Generate comprehensive statistical compliance report (NIST + FIPS)"
+    testClassesDirs = tasks.named<Test>("jvmTest").get().testClassesDirs
+    classpath = tasks.named<Test>("jvmTest").get().classpath
+
+    filter {
+        includeTestsMatching("com.scottnj.kmp_secure_random.nist.*")
+        includeTestsMatching("com.scottnj.kmp_secure_random.fips.*")
+    }
+
+    doFirst {
+        println("=" .repeat(70))
+        println("COMPREHENSIVE STATISTICAL COMPLIANCE REPORT")
+        println("=" .repeat(70))
+        println("Generating full randomness quality assessment...")
+        println("=" .repeat(70))
+    }
+
+    doLast {
+        println()
+        println("=" .repeat(70))
+        println("COMPLIANCE REPORT COMPLETE")
+        println("=" .repeat(70))
+        println("View detailed results at:")
+        println("  file://${reports.html.outputLocation.get()}/index.html")
+        println("=" .repeat(70))
     }
 }
 

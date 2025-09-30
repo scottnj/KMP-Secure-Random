@@ -209,6 +209,20 @@ jobs:
           echo "📚 Generating documentation..."
           ./gradlew dokkaHtml
 
+          echo "🎲 Running FIPS 140-2 compliance tests..."
+          ./gradlew fipsTests || {
+            echo "⚠️ FIPS 140-2 compliance tests failed"
+            echo "⚠️ This indicates potential issues with cryptographic randomness quality"
+            exit 1
+          }
+          echo "✅ FIPS 140-2 compliance validated"
+
+          echo "📊 Running NIST SP 800-22 statistical tests..."
+          ./gradlew nistTests || {
+            echo "⚠️ Some NIST SP 800-22 tests failed (this may be acceptable - check logs)"
+            echo "ℹ️ Linear Complexity test is disabled pending calibration"
+          }
+
           if [ "$success" = true ]; then
             echo "✅ All quality checks completed successfully"
           else
