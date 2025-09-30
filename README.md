@@ -373,14 +373,19 @@ Tests now verify actual platform API usage rather than just functional correctne
 ### GitHub Actions CI/CD
 - **Linux Testing**: Real tests on Ubuntu runners (latest, 22.04, 24.04)
 - **Cross-Platform Build**: All 20+ KMP targets verified
-- **Quality Gates**: Static analysis, coverage (90%+ target), OWASP dependency scanning
-- **Optimized Performance**: NVD API key support for 10x faster security scans
+- **Quality Gates**: Static analysis, coverage (90%+ target), OWASP dependency scanning with Maven Central optimization
+- **CI Reliability**: Automatic retry logic (3 attempts with exponential backoff), graceful timeout handling (30-minute job limits, 20-minute step limits)
+- **Optimized Performance**:
+  - Security scans use Gradle's dependency cache via `scanConfigurations` (eliminates redundant Maven Central downloads)
+  - NVD API key support for 10x faster vulnerability database queries
+  - Eliminated duplicate Platform Validation workflow runs
+  - Reduced scan time from 20+ minutes to 2-5 minutes
 - **Quick PR Checks**: Dedicated workflow for fast pull request validation
 - **Platform-Specific Validation**: Tests run with actual platform APIs (getrandom(), Web Crypto API, etc.)
 
 ### CI/CD Configuration
 For optimal CI performance, add these GitHub secrets:
-- `NVD_API_KEY`: Get a free API key from [NVD](https://nvd.nist.gov/developers/request-an-api-key) to speed up dependency checks from 25+ minutes to 2-5 minutes
+- `NVD_API_KEY`: Get a free API key from [NVD](https://nvd.nist.gov/developers/request-an-api-key) to speed up dependency checks from 20+ minutes to 2-5 minutes (combined with Maven Central optimization)
 
 ## Dependencies
 

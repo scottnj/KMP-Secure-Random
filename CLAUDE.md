@@ -228,7 +228,14 @@ Each using `getrandom()` + `/dev/urandom` fallback pattern.
 
 **Architecture-Specific API Verification**: Enhanced test suite with direct syscall/API verification - tests now actually verify syscall numbers (ARM64 #278, ARM32 #384, x86 #355, x64 #318), Windows CryptGenRandom API calls, Apple SecRandomCopyBytes usage, and Linux getrandom() with kernel version detection. Tests confirm actual platform API usage rather than just functional correctness.
 
-**CI Performance Optimization**: Added NVD API key support for 10x faster dependency scanning, implemented timeout protection, created quick-check workflow for PRs. Reduced security scan time from 25+ minutes to 2-5 minutes with proper API key configuration.
+**CI/CD Reliability & Performance Optimization**: Enhanced GitHub Actions workflows with comprehensive reliability and performance improvements:
+- **NVD API Key Support**: 10x faster vulnerability database queries
+- **Automatic Retry Logic**: 3 attempts with exponential backoff (60s → 120s → 180s timeouts) for transient network failures
+- **Increased Timeouts**: 30-minute job timeout, 20-minute step timeout per attempt with graceful degradation
+- **Maven Central Optimization** (Root Cause Fix): Configured OWASP dependency-check to use Gradle's dependency cache via `scanConfigurations` instead of redundantly downloading POMs from Maven Central, eliminating "Unable to download pom.xml" timeout errors
+- **Workflow Deduplication**: Removed redundant `push` trigger from Platform Validation workflow, preventing duplicate runs (now triggers only via `workflow_run` after CI/CD completes)
+- **Quick Check Workflow**: Fast PR validation for rapid development feedback
+- **Result**: Security scan time reduced from 20+ minutes to 2-5 minutes, eliminated timeout failures, improved CI reliability, saved CI minutes by preventing duplicate workflow runs
 
 **Comprehensive Test Suite Optimization**: Systematically refactored entire test suite for quality and maintainability - eliminated ~2000 lines of redundant tests across all platforms while enhancing platform-specific validation. Removed misleading thread safety tests, fixed critical gaps in Android Native architecture tests, added Web Crypto API verification for JavaScript/WASM-JS, enhanced TypedArray integration testing, and improved Windows version detection. Result: focused test suite with ~30 test files providing comprehensive platform validation without redundancy.
 
