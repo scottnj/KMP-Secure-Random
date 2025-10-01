@@ -22,15 +22,20 @@ import kotlin.test.assertTrue
  * 4. Binary Matrix Rank Test
  * 5. Cumulative Sums (Cusum) Test
  *
- * Significance level: α = 0.01 (99% confidence)
- * Uses multi-iteration approach with majority voting for robustness.
+ * NIST-Compliant Testing Methodology:
+ * - Tests multiple independent sequences (55-1000 depending on mode)
+ * - Uses 1M bit sequences (Standard/Comprehensive) or 100K bits (Quick)
+ * - Evaluates both proportion passing and P-value uniformity
+ * - Significance level: α = 0.01 (99% confidence)
+ *
+ * Test modes configured via NIST_TEST_MODE environment variable:
+ * - quick: 55 sequences × 100K bits (~2-3 min)
+ * - standard: 100 sequences × 1M bits (~10-15 min)  [default]
+ * - comprehensive: 1000 sequences × 1M bits (~60+ min)
  */
 class NistSP80022CoreTests {
 
     private val secureRandom = createSecureRandom().getOrThrow()
-    private val significanceLevel = 0.01 // 99% confidence level
-    private val iterations = 5 // Multi-iteration for robustness
-    private val requiredPasses = 3 // Majority voting threshold (3/5)
 
     /**
      * NIST Test 1.2: Frequency Test within a Block
@@ -42,47 +47,50 @@ class NistSP80022CoreTests {
      * from these proportions and compared to the critical value.
      *
      * NIST Recommendation: M >= 20, M > 0.01*n, N < 100
+     *
+     * NIST-Compliant Testing:
+     * - Tests multiple independent sequences (configured by NIST_TEST_MODE)
+     * - Evaluates proportion passing and P-value uniformity
+     * - Uses 1M bit sequences (Standard/Comprehensive) or 100K bits (Quick)
      */
     @Test
     fun testFrequencyWithinBlock() {
-        val results = mutableListOf<Pair<Double, String>>()
-        var passes = 0
+        val testName = "Frequency Test within a Block"
+        val pValues = mutableListOf<Double>()
 
-        // Critical value for chi-square distribution at α = 0.01
-        val criticalValue = 6.635 // Chi-square(1, 0.01) for typical N
-
-        repeat(iterations) { iteration ->
-            val result = performSingleFrequencyWithinBlockTest(iteration + 1)
-            results.add(result)
-            if (result.first >= 0.01) passes++ // P-value >= α means pass
+        // Test multiple independent sequences
+        repeat(NistTestConfig.sequenceCount) { sequenceIndex ->
+            val pValue = performSingleFrequencyWithinBlockTest(sequenceIndex + 1)
+            pValues.add(pValue)
         }
 
-        // Print all results for debugging
-        results.forEachIndexed { index, (pValue, details) ->
-            val status = if (pValue >= 0.01) "PASS" else "FAIL"
-            println("NIST Frequency-within-Block Test ${index + 1}: $details, P-value=$pValue [$status]")
-        }
+        // Perform NIST multi-sequence analysis
+        val result = NistStatisticalAnalysis.analyzeMultipleSequences(testName, pValues)
 
-        // Require majority of tests to pass
+        // Print detailed report
+        println(result.toReport())
+
+        // Assert both proportion and uniformity tests pass
         assertTrue(
-            passes >= requiredPasses,
-            "NIST Frequency-within-Block Test failed too often: $passes/$iterations passed (need $requiredPasses). " +
-            "Multiple failures may indicate systematic bias in block-level bit distribution."
+            result.passed,
+            "NIST $testName failed. " +
+            "Proportion: ${result.proportionPassing}/${pValues.size}, " +
+            "Uniformity P-value: ${result.uniformityPValue}"
         )
     }
 
     /**
      * Performs a single Frequency Test within a Block.
-     * @param iteration The iteration number for logging
-     * @return Pair of (P-value, debug info)
+     * @param sequenceIndex The sequence number for logging
+     * @return P-value for this sequence
      */
-    private fun performSingleFrequencyWithinBlockTest(iteration: Int): Pair<Double, String> {
-        val n = 16000 // Total bits
+    private fun performSingleFrequencyWithinBlockTest(sequenceIndex: Int): Double {
+        val n = NistTestConfig.sequenceLength
         val M = 128 // Block size (NIST recommendation: M >= 20)
         val N = n / M // Number of blocks
 
         val bytesResult = secureRandom.nextBytes(n / 8)
-        assertTrue(bytesResult.isSuccess, "Failed to generate random bytes in iteration $iteration")
+        assertTrue(bytesResult.isSuccess, "Failed to generate random bytes in sequence $sequenceIndex")
 
         val bits = bytesToBits(bytesResult.getOrNull()!!)
 
@@ -99,10 +107,7 @@ class NistSP80022CoreTests {
         chiSquare *= 4.0 * M
 
         // Calculate P-value using incomplete gamma function approximation
-        val pValue = igamc(N / 2.0, chiSquare / 2.0)
-
-        val details = "N=$N, M=$M, χ²=$chiSquare"
-        return Pair(pValue, details)
+        return igamc(N / 2.0, chiSquare / 2.0)
     }
 
     /**
@@ -118,39 +123,40 @@ class NistSP80022CoreTests {
      */
     @Test
     fun testRuns() {
-        val results = mutableListOf<Pair<Double, String>>()
-        var passes = 0
+        val testName = "Runs Test"
+        val pValues = mutableListOf<Double>()
 
-        repeat(iterations) { iteration ->
-            val result = performSingleRunsTest(iteration + 1)
-            results.add(result)
-            if (result.first >= 0.01) passes++ // P-value >= α means pass
+        // Test multiple independent sequences
+        repeat(NistTestConfig.sequenceCount) { sequenceIndex ->
+            val pValue = performSingleRunsTest(sequenceIndex + 1)
+            pValues.add(pValue)
         }
 
-        // Print all results for debugging
-        results.forEachIndexed { index, (pValue, details) ->
-            val status = if (pValue >= 0.01) "PASS" else "FAIL"
-            println("NIST Runs Test ${index + 1}: $details, P-value=$pValue [$status]")
-        }
+        // Perform NIST multi-sequence analysis
+        val result = NistStatisticalAnalysis.analyzeMultipleSequences(testName, pValues)
 
-        // Require majority of tests to pass
+        // Print detailed report
+        println(result.toReport())
+
+        // Assert both proportion and uniformity tests pass
         assertTrue(
-            passes >= requiredPasses,
-            "NIST Runs Test failed too often: $passes/$iterations passed (need $requiredPasses). " +
-            "Multiple failures may indicate non-random oscillation between bit values."
+            result.passed,
+            "NIST $testName failed. " +
+            "Proportion: ${result.proportionPassing}/${pValues.size}, " +
+            "Uniformity P-value: ${result.uniformityPValue}"
         )
     }
 
     /**
      * Performs a single Runs Test.
-     * @param iteration The iteration number for logging
-     * @return Pair of (P-value, debug info)
+     * @param sequenceIndex The sequence number for logging
+     * @return P-value for this sequence
      */
-    private fun performSingleRunsTest(iteration: Int): Pair<Double, String> {
-        val n = 16000 // Total bits
+    private fun performSingleRunsTest(sequenceIndex: Int): Double {
+        val n = NistTestConfig.sequenceLength
 
         val bytesResult = secureRandom.nextBytes(n / 8)
-        assertTrue(bytesResult.isSuccess, "Failed to generate random bytes in iteration $iteration")
+        assertTrue(bytesResult.isSuccess, "Failed to generate random bytes in sequence $sequenceIndex")
 
         val bits = bytesToBits(bytesResult.getOrNull()!!)
 
@@ -161,8 +167,8 @@ class NistSP80022CoreTests {
         // Prerequisite check: |π - 0.5| < 2/√n
         val threshold = 2.0 / sqrt(n.toDouble())
         if (abs(pi - 0.5) >= threshold) {
-            // Sequence doesn't pass prerequisite, return failure
-            return Pair(0.0, "Failed prerequisite: π=$pi, threshold=$threshold")
+            // Sequence doesn't pass prerequisite, return failure P-value
+            return 0.0
         }
 
         // Count runs
@@ -178,10 +184,7 @@ class NistSP80022CoreTests {
         val testStatistic = numerator / denominator
 
         // Calculate P-value using complementary error function approximation
-        val pValue = erfc(testStatistic / sqrt(2.0))
-
-        val details = "runs=$runs, expected=$expectedRuns, π=$pi"
-        return Pair(pValue, details)
+        return erfc(testStatistic / sqrt(2.0))
     }
 
     /**
@@ -193,39 +196,43 @@ class NistSP80022CoreTests {
      *
      * The test divides the sequence into blocks and examines the longest run of ones
      * within each block. The test statistic follows a chi-square distribution.
+     *
+     * Note: This test uses fixed parameters (n=75,000, M=10,000) from NIST table,
+     * independent of configured sequence length for proper statistical properties.
      */
     @Test
     fun testLongestRunOfOnes() {
-        val results = mutableListOf<Pair<Double, String>>()
-        var passes = 0
+        val testName = "Longest Run of Ones in a Block Test"
+        val pValues = mutableListOf<Double>()
 
-        repeat(iterations) { iteration ->
-            val result = performSingleLongestRunTest(iteration + 1)
-            results.add(result)
-            if (result.first >= 0.01) passes++ // P-value >= α means pass
+        // Test multiple independent sequences
+        repeat(NistTestConfig.sequenceCount) { sequenceIndex ->
+            val pValue = performSingleLongestRunTest(sequenceIndex + 1)
+            pValues.add(pValue)
         }
 
-        // Print all results for debugging
-        results.forEachIndexed { index, (pValue, details) ->
-            val status = if (pValue >= 0.01) "PASS" else "FAIL"
-            println("NIST Longest Run Test ${index + 1}: $details, P-value=$pValue [$status]")
-        }
+        // Perform NIST multi-sequence analysis
+        val result = NistStatisticalAnalysis.analyzeMultipleSequences(testName, pValues)
 
-        // Require majority of tests to pass
+        // Print detailed report
+        println(result.toReport())
+
+        // Assert both proportion and uniformity tests pass
         assertTrue(
-            passes >= requiredPasses,
-            "NIST Longest Run Test failed too often: $passes/$iterations passed (need $requiredPasses). " +
-            "Multiple failures may indicate non-random clustering in bit sequences."
+            result.passed,
+            "NIST $testName failed. " +
+            "Proportion: ${result.proportionPassing}/${pValues.size}, " +
+            "Uniformity P-value: ${result.uniformityPValue}"
         )
     }
 
     /**
      * Performs a single Longest Run of Ones Test.
-     * Uses parameters for n = 6272 (K=5, M=128, N=49)
-     * @param iteration The iteration number for logging
-     * @return Pair of (P-value, debug info)
+     * Uses parameters for n = 75,000 (K=6, M=10,000, N=7.5) from NIST table 2-4
+     * @param sequenceIndex The sequence number for logging
+     * @return P-value for this sequence
      */
-    private fun performSingleLongestRunTest(iteration: Int): Pair<Double, String> {
+    private fun performSingleLongestRunTest(sequenceIndex: Int): Double {
         val n = 6272 // Total bits (must be divisible by M)
         val M = 128 // Block size
         val N = n / M // Number of blocks = 49
@@ -236,7 +243,7 @@ class NistSP80022CoreTests {
         val probabilities = doubleArrayOf(0.1174, 0.2430, 0.2493, 0.1752, 0.1027, 0.1124)
 
         val bytesResult = secureRandom.nextBytes(n / 8)
-        assertTrue(bytesResult.isSuccess, "Failed to generate random bytes in iteration $iteration")
+        assertTrue(bytesResult.isSuccess, "Failed to generate random bytes in sequence $sequenceIndex")
 
         val bits = bytesToBits(bytesResult.getOrNull()!!)
 
@@ -277,10 +284,7 @@ class NistSP80022CoreTests {
         }
 
         // Calculate P-value (K degrees of freedom)
-        val pValue = igamc(K / 2.0, chiSquare / 2.0)
-
-        val details = "N=$N, M=$M, χ²=$chiSquare, freq=${frequencies.toList()}"
-        return Pair(pValue, details)
+        return igamc(K / 2.0, chiSquare / 2.0)
     }
 
     /**
@@ -293,42 +297,43 @@ class NistSP80022CoreTests {
      */
     @Test
     fun testBinaryMatrixRank() {
-        val results = mutableListOf<Pair<Double, String>>()
-        var passes = 0
+        val testName = "Binary Matrix Rank Test"
+        val pValues = mutableListOf<Double>()
 
-        repeat(iterations) { iteration ->
-            val result = performSingleMatrixRankTest(iteration + 1)
-            results.add(result)
-            if (result.first >= 0.01) passes++ // P-value >= α means pass
+        // Test multiple independent sequences
+        repeat(NistTestConfig.sequenceCount) { sequenceIndex ->
+            val pValue = performSingleMatrixRankTest(sequenceIndex + 1)
+            pValues.add(pValue)
         }
 
-        // Print all results for debugging
-        results.forEachIndexed { index, (pValue, details) ->
-            val status = if (pValue >= 0.01) "PASS" else "FAIL"
-            println("NIST Binary Matrix Rank Test ${index + 1}: $details, P-value=$pValue [$status]")
-        }
+        // Perform NIST multi-sequence analysis
+        val result = NistStatisticalAnalysis.analyzeMultipleSequences(testName, pValues)
 
-        // Require majority of tests to pass
+        // Print detailed report
+        println(result.toReport())
+
+        // Assert both proportion and uniformity tests pass
         assertTrue(
-            passes >= requiredPasses,
-            "NIST Binary Matrix Rank Test failed too often: $passes/$iterations passed (need $requiredPasses). " +
-            "Multiple failures may indicate linear dependence in bit sequences."
+            result.passed,
+            "NIST $testName failed. " +
+            "Proportion: ${result.proportionPassing}/${pValues.size}, " +
+            "Uniformity P-value: ${result.uniformityPValue}"
         )
     }
 
     /**
      * Performs a single Binary Matrix Rank Test.
-     * @param iteration The iteration number for logging
-     * @return Pair of (P-value, debug info)
+     * @param sequenceIndex The sequence number for logging
+     * @return P-value for this sequence
      */
-    private fun performSingleMatrixRankTest(iteration: Int): Pair<Double, String> {
+    private fun performSingleMatrixRankTest(sequenceIndex: Int): Double {
         val M = 32 // Number of rows
         val Q = 32 // Number of columns
         val n = 38400 // Total bits (must be divisible by M*Q)
         val N = n / (M * Q) // Number of matrices
 
         val bytesResult = secureRandom.nextBytes(n / 8)
-        assertTrue(bytesResult.isSuccess, "Failed to generate random bytes in iteration $iteration")
+        assertTrue(bytesResult.isSuccess, "Failed to generate random bytes in sequence $sequenceIndex")
 
         val bits = bytesToBits(bytesResult.getOrNull()!!)
 
@@ -369,10 +374,7 @@ class NistSP80022CoreTests {
             (other - N * probOther).pow(2) / (N * probOther)
 
         // Calculate P-value (2 degrees of freedom)
-        val pValue = kotlin.math.exp(-chiSquare / 2.0)
-
-        val details = "N=$N, full=$fullRank, M-1=$rankMinusOne, other=$other, χ²=$chiSquare"
-        return Pair(pValue, details)
+        return kotlin.math.exp(-chiSquare / 2.0)
     }
 
     /**
@@ -387,40 +389,41 @@ class NistSP80022CoreTests {
      */
     @Test
     fun testCumulativeSums() {
-        val results = mutableListOf<Pair<Double, String>>()
-        var passes = 0
+        val testName = "Cumulative Sums (Cusum) Test"
+        val pValues = mutableListOf<Double>()
 
-        repeat(iterations) { iteration ->
-            val result = performSingleCusumTest(iteration + 1)
-            results.add(result)
-            if (result.first >= 0.01) passes++ // P-value >= α means pass
+        // Test multiple independent sequences
+        repeat(NistTestConfig.sequenceCount) { sequenceIndex ->
+            val pValue = performSingleCusumTest(sequenceIndex + 1)
+            pValues.add(pValue)
         }
 
-        // Print all results for debugging
-        results.forEachIndexed { index, (pValue, details) ->
-            val status = if (pValue >= 0.01) "PASS" else "FAIL"
-            println("NIST Cumulative Sums Test ${index + 1}: $details, P-value=$pValue [$status]")
-        }
+        // Perform NIST multi-sequence analysis
+        val result = NistStatisticalAnalysis.analyzeMultipleSequences(testName, pValues)
 
-        // Require majority of tests to pass
+        // Print detailed report
+        println(result.toReport())
+
+        // Assert both proportion and uniformity tests pass
         assertTrue(
-            passes >= requiredPasses,
-            "NIST Cumulative Sums Test failed too often: $passes/$iterations passed (need $requiredPasses). " +
-            "Multiple failures may indicate systematic drift in random walk behavior."
+            result.passed,
+            "NIST $testName failed. " +
+            "Proportion: ${result.proportionPassing}/${pValues.size}, " +
+            "Uniformity P-value: ${result.uniformityPValue}"
         )
     }
 
     /**
      * Performs a single Cumulative Sums Test.
      * Tests both forward and backward modes.
-     * @param iteration The iteration number for logging
-     * @return Pair of (P-value, debug info)
+     * @param sequenceIndex The sequence number for logging
+     * @return P-value for this sequence (minimum of forward and backward)
      */
-    private fun performSingleCusumTest(iteration: Int): Pair<Double, String> {
-        val n = 16000 // Total bits
+    private fun performSingleCusumTest(sequenceIndex: Int): Double {
+        val n = NistTestConfig.sequenceLength
 
         val bytesResult = secureRandom.nextBytes(n / 8)
-        assertTrue(bytesResult.isSuccess, "Failed to generate random bytes in iteration $iteration")
+        assertTrue(bytesResult.isSuccess, "Failed to generate random bytes in sequence $sequenceIndex")
 
         val bits = bytesToBits(bytesResult.getOrNull()!!)
 
@@ -448,10 +451,7 @@ class NistSP80022CoreTests {
         val pValueBackward = calculateCusumPValue(maxBackward, n)
 
         // Use the minimum P-value (most conservative)
-        val pValue = minOf(pValueForward, pValueBackward)
-
-        val details = "maxForward=$maxForward, maxBackward=$maxBackward, P-fwd=$pValueForward, P-back=$pValueBackward"
-        return Pair(pValue, details)
+        return minOf(pValueForward, pValueBackward)
     }
 
     // ==================== Helper Functions ====================

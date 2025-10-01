@@ -8,6 +8,8 @@ on:
 
 env:
   GRADLE_OPTS: -Dorg.gradle.daemon=false -Dorg.gradle.parallel=true -Dorg.gradle.caching=true
+  # NIST test mode: "quick" for CI (55 sequences × 100K bits), "standard" for 100 sequences × 1M bits
+  NIST_TEST_MODE: quick
 
 jobs:
   # Compile all 12 KMP platforms for early feedback

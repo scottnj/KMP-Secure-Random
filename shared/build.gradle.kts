@@ -202,6 +202,15 @@ detekt {
     autoCorrect = false
 }
 
+// Configure test timeouts and environment for NIST statistical tests
+tasks.withType<Test>().configureEach {
+    // Configure environment for NIST tests (defaults to quick mode for CI)
+    environment("NIST_TEST_MODE", System.getenv("NIST_TEST_MODE") ?: "quick")
+
+    // Note: Test timeout is managed by GitHub Actions job timeout (30 minutes)
+    // Individual test methods don't have timeouts, only the overall test execution
+}
+
 tasks.withType<io.gitlab.arturbosch.detekt.Detekt>().configureEach {
     reports {
         html.required.set(true)

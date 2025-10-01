@@ -23,15 +23,20 @@ import kotlin.test.assertTrue
  * 4. Linear Complexity Test
  * 5. Maurer's Universal Statistical Test
  *
- * Significance level: α = 0.01 (99% confidence)
- * Uses multi-iteration approach with majority voting for robustness.
+ * NIST-Compliant Testing Methodology:
+ * - Tests multiple independent sequences (55-1000 depending on mode)
+ * - Uses 1M bit sequences (Standard/Comprehensive) or 100K bits (Quick)
+ * - Evaluates both proportion passing and P-value uniformity
+ * - Significance level: α = 0.01 (99% confidence)
+ *
+ * Test modes configured via NIST_TEST_MODE environment variable:
+ * - quick: 55 sequences × 100K bits (~2-3 min)
+ * - standard: 100 sequences × 1M bits (~10-15 min)  [default]
+ * - comprehensive: 1000 sequences × 1M bits (~60+ min)
  */
 class NistSP80022AdvancedTests {
 
     private val secureRandom = createSecureRandom().getOrThrow()
-    private val significanceLevel = 0.01 // 99% confidence level
-    private val iterations = 5 // Multi-iteration for robustness
-    private val requiredPasses = 3 // Majority voting threshold (3/5)
 
     /**
      * NIST Test 1.6: Discrete Fourier Transform (Spectral) Test
@@ -45,39 +50,41 @@ class NistSP80022AdvancedTests {
      */
     @Test
     fun testDiscreteFourierTransform() {
-        val results = mutableListOf<Pair<Double, String>>()
-        var passes = 0
+        val testName = "Discrete Fourier Transform (Spectral) Test"
+        val pValues = mutableListOf<Double>()
 
-        repeat(iterations) { iteration ->
-            val result = performSingleDFTTest(iteration + 1)
-            results.add(result)
-            if (result.first >= 0.01) passes++ // P-value >= α means pass
+        // Test multiple independent sequences
+        repeat(NistTestConfig.sequenceCount) { sequenceIndex ->
+            val pValue = performSingleDFTTest(sequenceIndex + 1)
+            pValues.add(pValue)
         }
 
-        // Print all results for debugging
-        results.forEachIndexed { index, (pValue, details) ->
-            val status = if (pValue >= 0.01) "PASS" else "FAIL"
-            println("NIST DFT (Spectral) Test ${index + 1}: $details, P-value=$pValue [$status]")
-        }
+        // Perform NIST multi-sequence analysis
+        val result = NistStatisticalAnalysis.analyzeMultipleSequences(testName, pValues)
 
-        // Require majority of tests to pass
+        // Print detailed report
+        println(result.toReport())
+
+        // Assert both proportion and uniformity tests pass
         assertTrue(
-            passes >= requiredPasses,
-            "NIST DFT (Spectral) Test failed too often: $passes/$iterations passed (need $requiredPasses). " +
-            "Multiple failures may indicate periodic patterns in the bit sequence."
+            result.passed,
+            "NIST $testName failed. " +
+            "Proportion: ${result.proportionPassing}/${pValues.size}, " +
+            "Uniformity P-value: ${result.uniformityPValue}"
         )
     }
 
     /**
      * Performs a single DFT (Spectral) Test.
-     * @param iteration The iteration number for logging
-     * @return Pair of (P-value, debug info)
+     * @param sequenceIndex The sequence number for logging
+     * @return P-value for this sequence
      */
-    private fun performSingleDFTTest(iteration: Int): Pair<Double, String> {
-        val n = 8192 // Total bits (power of 2 for efficient DFT)
+    private fun performSingleDFTTest(sequenceIndex: Int): Double {
+        // Use configured sequence length, round down to nearest power of 2 for efficiency
+        val n = Integer.highestOneBit(NistTestConfig.sequenceLength)
 
         val bytesResult = secureRandom.nextBytes(n / 8)
-        assertTrue(bytesResult.isSuccess, "Failed to generate random bytes in iteration $iteration")
+        assertTrue(bytesResult.isSuccess, "Failed to generate random bytes in sequence $sequenceIndex")
 
         val bits = bytesToBits(bytesResult.getOrNull()!!)
 
@@ -108,10 +115,7 @@ class NistSP80022AdvancedTests {
         val d = (peaksAboveThreshold - expectedPeaks) / sqrt(n * 0.95 * 0.05 / 4.0)
 
         // Calculate P-value using complementary error function
-        val pValue = erfc(abs(d) / sqrt(2.0))
-
-        val details = "n=$n, peaks=$peaksAboveThreshold, expected=${expectedPeaks.toInt()}, d=$d"
-        return Pair(pValue, details)
+        return erfc(abs(d) / sqrt(2.0))
     }
 
     /**
@@ -124,40 +128,41 @@ class NistSP80022AdvancedTests {
      */
     @Test
     fun testApproximateEntropy() {
-        val results = mutableListOf<Pair<Double, String>>()
-        var passes = 0
+        val testName = "Approximate Entropy Test"
+        val pValues = mutableListOf<Double>()
 
-        repeat(iterations) { iteration ->
-            val result = performSingleApproximateEntropyTest(iteration + 1)
-            results.add(result)
-            if (result.first >= 0.01) passes++ // P-value >= α means pass
+        // Test multiple independent sequences
+        repeat(NistTestConfig.sequenceCount) { sequenceIndex ->
+            val pValue = performSingleApproximateEntropyTest(sequenceIndex + 1)
+            pValues.add(pValue)
         }
 
-        // Print all results for debugging
-        results.forEachIndexed { index, (pValue, details) ->
-            val status = if (pValue >= 0.01) "PASS" else "FAIL"
-            println("NIST Approximate Entropy Test ${index + 1}: $details, P-value=$pValue [$status]")
-        }
+        // Perform NIST multi-sequence analysis
+        val result = NistStatisticalAnalysis.analyzeMultipleSequences(testName, pValues)
 
-        // Require majority of tests to pass
+        // Print detailed report
+        println(result.toReport())
+
+        // Assert both proportion and uniformity tests pass
         assertTrue(
-            passes >= requiredPasses,
-            "NIST Approximate Entropy Test failed too often: $passes/$iterations passed (need $requiredPasses). " +
-            "Multiple failures may indicate non-random m-bit pattern distribution."
+            result.passed,
+            "NIST $testName failed. " +
+            "Proportion: ${result.proportionPassing}/${pValues.size}, " +
+            "Uniformity P-value: ${result.uniformityPValue}"
         )
     }
 
     /**
      * Performs a single Approximate Entropy Test.
-     * @param iteration The iteration number for logging
-     * @return Pair of (P-value, debug info)
+     * @param sequenceIndex The sequence number for logging
+     * @return P-value for this sequence
      */
-    private fun performSingleApproximateEntropyTest(iteration: Int): Pair<Double, String> {
-        val n = 10000 // Bit sequence length
+    private fun performSingleApproximateEntropyTest(sequenceIndex: Int): Double {
+        val n = NistTestConfig.sequenceLength
         val m = 2 // Block length (NIST recommendation: m=2 or m=3)
 
         val bytesResult = secureRandom.nextBytes(n / 8)
-        assertTrue(bytesResult.isSuccess, "Failed to generate random bytes in iteration $iteration")
+        assertTrue(bytesResult.isSuccess, "Failed to generate random bytes in sequence $sequenceIndex")
 
         val bits = bytesToBits(bytesResult.getOrNull()!!)
 
@@ -175,10 +180,7 @@ class NistSP80022AdvancedTests {
 
         // Calculate P-value (chi-square distribution with 2^m degrees of freedom)
         val df = (1 shl m) // 2^m
-        val pValue = igamc(df / 2.0, chiSquare / 2.0)
-
-        val details = "n=$n, m=$m, ApEn=$apEn, χ²=$chiSquare"
-        return Pair(pValue, details)
+        return igamc(df / 2.0, chiSquare / 2.0)
     }
 
     /**
@@ -220,41 +222,41 @@ class NistSP80022AdvancedTests {
      */
     @Test
     fun testSerial() {
-        val results = mutableListOf<Pair<Double, String>>()
-        var passes = 0
+        val testName = "Serial Test"
+        val pValues = mutableListOf<Double>()
 
-        repeat(iterations) { iteration ->
-            val result = performSingleSerialTest(iteration + 1)
-            results.add(result)
-            // Both P-values must pass
-            if (result.first >= 0.01) passes++
+        // Test multiple independent sequences
+        repeat(NistTestConfig.sequenceCount) { sequenceIndex ->
+            val pValue = performSingleSerialTest(sequenceIndex + 1)
+            pValues.add(pValue)
         }
 
-        // Print all results for debugging
-        results.forEachIndexed { index, (pValue, details) ->
-            val status = if (pValue >= 0.01) "PASS" else "FAIL"
-            println("NIST Serial Test ${index + 1}: $details, P-value=$pValue [$status]")
-        }
+        // Perform NIST multi-sequence analysis
+        val result = NistStatisticalAnalysis.analyzeMultipleSequences(testName, pValues)
 
-        // Require majority of tests to pass
+        // Print detailed report
+        println(result.toReport())
+
+        // Assert both proportion and uniformity tests pass
         assertTrue(
-            passes >= requiredPasses,
-            "NIST Serial Test failed too often: $passes/$iterations passed (need $requiredPasses). " +
-            "Multiple failures may indicate non-uniform m-bit overlapping pattern distribution."
+            result.passed,
+            "NIST $testName failed. " +
+            "Proportion: ${result.proportionPassing}/${pValues.size}, " +
+            "Uniformity P-value: ${result.uniformityPValue}"
         )
     }
 
     /**
      * Performs a single Serial Test.
-     * @param iteration The iteration number for logging
-     * @return Pair of (minimum P-value, debug info)
+     * @param sequenceIndex The sequence number for logging
+     * @return P-value for this sequence (minimum of both test statistics)
      */
-    private fun performSingleSerialTest(iteration: Int): Pair<Double, String> {
-        val n = 10000 // Bit sequence length
+    private fun performSingleSerialTest(sequenceIndex: Int): Double {
+        val n = NistTestConfig.sequenceLength
         val m = 3 // Block length (NIST recommendation: m=3 or m=4)
 
         val bytesResult = secureRandom.nextBytes(n / 8)
-        assertTrue(bytesResult.isSuccess, "Failed to generate random bytes in iteration $iteration")
+        assertTrue(bytesResult.isSuccess, "Failed to generate random bytes in sequence $sequenceIndex")
 
         val bits = bytesToBits(bytesResult.getOrNull()!!)
 
@@ -272,10 +274,7 @@ class NistSP80022AdvancedTests {
         val pValue2 = igamc((1 shl (m - 2)) / 2.0, del2 / 2.0)
 
         // Use minimum P-value (most conservative)
-        val pValue = minOf(pValue1, pValue2)
-
-        val details = "n=$n, m=$m, ∇ψ²=$del1, ∇²ψ²=$del2, P1=$pValue1, P2=$pValue2"
-        return Pair(pValue, details)
+        return minOf(pValue1, pValue2)
     }
 
     /**
@@ -319,27 +318,12 @@ class NistSP80022AdvancedTests {
     @kotlin.test.Ignore
     @Test
     fun testLinearComplexity() {
-        val results = mutableListOf<Pair<Double, String>>()
-        var passes = 0
-
-        repeat(iterations) { iteration ->
-            val result = performSingleLinearComplexityTest(iteration + 1)
-            results.add(result)
-            if (result.first >= 0.01) passes++ // P-value >= α means pass
-        }
-
-        // Print all results for debugging
-        results.forEachIndexed { index, (pValue, details) ->
-            val status = if (pValue >= 0.01) "PASS" else "FAIL"
-            println("NIST Linear Complexity Test ${index + 1}: $details, P-value=$pValue [$status]")
-        }
-
-        // Require majority of tests to pass
-        assertTrue(
-            passes >= requiredPasses,
-            "NIST Linear Complexity Test failed too often: $passes/$iterations passed (need $requiredPasses). " +
-            "Multiple failures may indicate insufficient complexity in bit sequence."
-        )
+        // Test disabled - requires calibration against NIST reference implementation
+        // When re-enabled, this will follow the same pattern as other tests:
+        // 1. Test multiple sequences
+        // 2. Collect P-values
+        // 3. Use NistStatisticalAnalysis.analyzeMultipleSequences()
+        // 4. Check both proportion and uniformity
     }
 
     /**
@@ -468,35 +452,36 @@ class NistSP80022AdvancedTests {
      */
     @Test
     fun testMaurersUniversalStatistical() {
-        val results = mutableListOf<Pair<Double, String>>()
-        var passes = 0
+        val testName = "Maurer's Universal Statistical Test"
+        val pValues = mutableListOf<Double>()
 
-        repeat(iterations) { iteration ->
-            val result = performSingleMaurersTest(iteration + 1)
-            results.add(result)
-            if (result.first >= 0.01) passes++ // P-value >= α means pass
+        // Test multiple independent sequences
+        repeat(NistTestConfig.sequenceCount) { sequenceIndex ->
+            val pValue = performSingleMaurersTest(sequenceIndex + 1)
+            pValues.add(pValue)
         }
 
-        // Print all results for debugging
-        results.forEachIndexed { index, (pValue, details) ->
-            val status = if (pValue >= 0.01) "PASS" else "FAIL"
-            println("NIST Maurer's Universal Test ${index + 1}: $details, P-value=$pValue [$status]")
-        }
+        // Perform NIST multi-sequence analysis
+        val result = NistStatisticalAnalysis.analyzeMultipleSequences(testName, pValues)
 
-        // Require majority of tests to pass
+        // Print detailed report
+        println(result.toReport())
+
+        // Assert both proportion and uniformity tests pass
         assertTrue(
-            passes >= requiredPasses,
-            "NIST Maurer's Universal Test failed too often: $passes/$iterations passed (need $requiredPasses). " +
-            "Multiple failures may indicate high compressibility (non-randomness)."
+            result.passed,
+            "NIST $testName failed. " +
+            "Proportion: ${result.proportionPassing}/${pValues.size}, " +
+            "Uniformity P-value: ${result.uniformityPValue}"
         )
     }
 
     /**
      * Performs a single Maurer's Universal Statistical Test.
-     * @param iteration The iteration number for logging
-     * @return Pair of (P-value, debug info)
+     * @param sequenceIndex The sequence number for logging
+     * @return P-value for this sequence
      */
-    private fun performSingleMaurersTest(iteration: Int): Pair<Double, String> {
+    private fun performSingleMaurersTest(sequenceIndex: Int): Double {
         val L = 6 // Block length (NIST: L=6 or L=7)
         val Q = 640 // Initialization sequence length (10 * 2^L)
         val K = 1000 // Number of test blocks
@@ -505,7 +490,7 @@ class NistSP80022AdvancedTests {
         val totalBits = n * L
 
         val bytesResult = secureRandom.nextBytes(totalBits / 8)
-        assertTrue(bytesResult.isSuccess, "Failed to generate random bytes in iteration $iteration")
+        assertTrue(bytesResult.isSuccess, "Failed to generate random bytes in sequence $sequenceIndex")
 
         val bits = bytesToBits(bytesResult.getOrNull()!!)
 
@@ -545,10 +530,7 @@ class NistSP80022AdvancedTests {
         val testStat = abs(fn - expectedValue) / sqrt(variance)
 
         // Calculate P-value using complementary error function
-        val pValue = erfc(testStat / sqrt(2.0))
-
-        val details = "L=$L, Q=$Q, K=$K, fn=$fn, expected=$expectedValue"
-        return Pair(pValue, details)
+        return erfc(testStat / sqrt(2.0))
     }
 
     // ==================== Helper Functions ====================
