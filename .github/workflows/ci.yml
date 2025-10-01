@@ -96,9 +96,12 @@ jobs:
           - platform: JavaScript
             os: ubuntu-latest
             task: jsTest
-          - platform: WASM-JS
+          - platform: WASM-JS (Node)
             os: ubuntu-latest
-            task: wasmJsNodeTest  # Only Node.js tests (D8 expected to fail with new security)
+            task: wasmJsNodeTest
+          - platform: WASM-JS (D8)
+            os: ubuntu-latest
+            task: wasmJsD8Test
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout
@@ -119,6 +122,10 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
 
       - name: Run ${{ matrix.platform }} Tests
+        # Both Node.js and D8 tests should pass. D8 lacks Web Crypto API but tests use
+        # FallbackPolicy.ALLOW_INSECURE with @OptIn(AllowInsecureFallback) to test the
+        # Math.random() fallback path. This validates both secure (Node/Browser) and
+        # insecure fallback (D8) code paths work correctly.
         run: |
           echo "🧪 Running ${{ matrix.platform }} tests..."
           ./gradlew ${{ matrix.task }} --info
@@ -286,7 +293,7 @@ jobs:
           fi
 
           echo "✓ Checking FallbackPolicy enum implementation..."
-          if grep -r "FallbackPolicy\." shared/src/commonMain/; then
+          if grep -r "FallbackPolicy\\." shared/src/commonMain/; then
             echo "✅ FallbackPolicy enum found in commonMain"
           else
             echo "❌ Missing FallbackPolicy enum"
@@ -294,7 +301,7 @@ jobs:
           fi
 
           echo "✓ Checking WASM-JS secure-by-default implementation..."
-          if grep -r "SECURE_ONLY\|ALLOW_INSECURE" shared/src/wasmJsMain/; then
+          if grep -r "SECURE_ONLY\\|ALLOW_INSECURE" shared/src/wasmJsMain/; then
             echo "✅ WASM-JS fallback policy implementation found"
           else
             echo "❌ Missing WASM-JS fallback policy implementation"
