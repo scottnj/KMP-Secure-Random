@@ -96,12 +96,9 @@ jobs:
           - platform: JavaScript
             os: ubuntu-latest
             task: jsTest
-          - platform: WASM-JS (Node)
+          - platform: WASM-JS
             os: ubuntu-latest
             task: wasmJsNodeTest
-          - platform: WASM-JS (D8)
-            os: ubuntu-latest
-            task: wasmJsD8Test
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout
@@ -122,10 +119,10 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
 
       - name: Run ${{ matrix.platform }} Tests
-        # Both Node.js and D8 tests should pass. D8 lacks Web Crypto API but tests use
-        # FallbackPolicy.ALLOW_INSECURE with @OptIn(AllowInsecureFallback) to test the
-        # Math.random() fallback path. This validates both secure (Node/Browser) and
-        # insecure fallback (D8) code paths work correctly.
+        # Only testing Node.js environment which has Web Crypto API for secure randomness.
+        # D8 environment lacks Web Crypto and would require ALLOW_INSECURE fallback policy,
+        # but common tests use SECURE_ONLY by default. D8-specific fallback testing is
+        # covered by platform-specific tests in wasmJsTest with @OptIn(AllowInsecureFallback).
         run: |
           echo "🧪 Running ${{ matrix.platform }} tests..."
           ./gradlew ${{ matrix.task }} --info
