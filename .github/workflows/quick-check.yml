@@ -8,13 +8,12 @@ on:
       - '**.kts'
       - 'gradle/**'
       - 'gradle.properties'
-    paths-ignore:
-      # Exclude paths that trigger the more comprehensive platform-validation.yml workflow
-      - 'shared/src/linuxMain/**'
-      - 'shared/src/mingwMain/**'
-      - 'shared/src/androidNative*Main/**'
-      # Documentation changes should not trigger a build
-      - '**.md'
+      # Exclude platform-specific paths (handled by platform-validation.yml)
+      - '!shared/src/linuxMain/**'
+      - '!shared/src/mingwMain/**'
+      - '!shared/src/androidNative*Main/**'
+      # Exclude documentation
+      - '!**.md'
 
 env:
   GRADLE_OPTS: -Dorg.gradle.daemon=false -Dorg.gradle.parallel=true -Dorg.gradle.caching=true
