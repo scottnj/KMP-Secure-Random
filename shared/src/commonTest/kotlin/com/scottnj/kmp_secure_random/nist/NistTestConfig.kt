@@ -164,11 +164,11 @@ data class NistTestResult(
             appendLine()
             appendLine("PROPORTION TEST (NIST Section 4.2.1):")
             appendLine("  Passing sequences: $proportionPassing / ${pValues.size}")
-            appendLine("  Expected range: $minPassing - $maxPassing (${String.format("%.4f", lowerBound)} - ${String.format("%.4f", upperBound)})")
+            appendLine("  Expected range: $minPassing - $maxPassing (${formatDouble(lowerBound, 4)} - ${formatDouble(upperBound, 4)})")
             appendLine("  Result: ${if (proportionPassed) "PASS ✓" else "FAIL ✗"}")
             appendLine()
             appendLine("P-VALUE UNIFORMITY TEST (NIST Section 4.2.2):")
-            appendLine("  Chi-square P-value: ${String.format("%.6f", uniformityPValue)}")
+            appendLine("  Chi-square P-value: ${formatDouble(uniformityPValue, 6)}")
             appendLine("  Minimum required: ${NistTestConfig.UNIFORMITY_MIN_PVALUE}")
             appendLine("  Result: ${if (uniformityPassed) "PASS ✓" else "FAIL ✗"}")
             appendLine()
@@ -200,8 +200,36 @@ data class NistTestResult(
                 val upper = (i + 1) / 10.0
                 val count = bins[i]
                 val bar = "█".repeat((count * 40 / pValues.size).coerceAtLeast(0))
-                appendLine("  C${i + 1}   [${String.format("%.1f", lower)}-${String.format("%.1f", upper)})  ${String.format("%5d", count)}    ${String.format("%5d", expectedPerBin)}    $bar")
+                appendLine("  C${i + 1}   [${formatDouble(lower, 1)}-${formatDouble(upper, 1)})  ${formatInt(count, 5)}    ${formatInt(expectedPerBin, 5)}    $bar")
             }
         }
+    }
+
+    /**
+     * Format double to specified decimal places (platform-agnostic).
+     */
+    private fun formatDouble(value: Double, decimals: Int): String {
+        val multiplier = when (decimals) {
+            1 -> 10.0
+            2 -> 100.0
+            3 -> 1000.0
+            4 -> 10000.0
+            5 -> 100000.0
+            6 -> 1000000.0
+            else -> 1.0
+        }
+        val rounded = kotlin.math.round(value * multiplier) / multiplier
+
+        // Simple formatting without String.format()
+        val intPart = rounded.toInt()
+        val fracPart = ((rounded - intPart) * multiplier).toInt().toString().padStart(decimals, '0')
+        return if (decimals > 0) "$intPart.$fracPart" else intPart.toString()
+    }
+
+    /**
+     * Format integer with padding (platform-agnostic).
+     */
+    private fun formatInt(value: Int, width: Int): String {
+        return value.toString().padStart(width, ' ')
     }
 }

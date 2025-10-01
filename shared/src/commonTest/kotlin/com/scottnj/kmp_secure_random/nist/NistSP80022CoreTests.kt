@@ -89,7 +89,9 @@ class NistSP80022CoreTests {
         val M = 128 // Block size (NIST recommendation: M >= 20)
         val N = n / M // Number of blocks
 
-        val bytesResult = secureRandom.nextBytes(n / 8)
+        // Create fresh RNG instance for each sequence to ensure true independence
+        val rng = createSecureRandom().getOrThrow()
+        val bytesResult = rng.nextBytes(n / 8)
         assertTrue(bytesResult.isSuccess, "Failed to generate random bytes in sequence $sequenceIndex")
 
         val bits = bytesToBits(bytesResult.getOrNull()!!)
@@ -155,7 +157,9 @@ class NistSP80022CoreTests {
     private fun performSingleRunsTest(sequenceIndex: Int): Double {
         val n = NistTestConfig.sequenceLength
 
-        val bytesResult = secureRandom.nextBytes(n / 8)
+        // Create fresh RNG instance for each sequence to ensure true independence
+        val rng = createSecureRandom().getOrThrow()
+        val bytesResult = rng.nextBytes(n / 8)
         assertTrue(bytesResult.isSuccess, "Failed to generate random bytes in sequence $sequenceIndex")
 
         val bits = bytesToBits(bytesResult.getOrNull()!!)
@@ -242,7 +246,9 @@ class NistSP80022CoreTests {
         // Categories: ≤4, 5, 6, 7, 8, ≥9
         val probabilities = doubleArrayOf(0.1174, 0.2430, 0.2493, 0.1752, 0.1027, 0.1124)
 
-        val bytesResult = secureRandom.nextBytes(n / 8)
+        // Create fresh RNG instance for each sequence to ensure true independence
+        val rng = createSecureRandom().getOrThrow()
+        val bytesResult = rng.nextBytes(n / 8)
         assertTrue(bytesResult.isSuccess, "Failed to generate random bytes in sequence $sequenceIndex")
 
         val bits = bytesToBits(bytesResult.getOrNull()!!)
@@ -332,7 +338,9 @@ class NistSP80022CoreTests {
         val n = 38400 // Total bits (must be divisible by M*Q)
         val N = n / (M * Q) // Number of matrices
 
-        val bytesResult = secureRandom.nextBytes(n / 8)
+        // Create fresh RNG instance for each sequence to ensure true independence
+        val rng = createSecureRandom().getOrThrow()
+        val bytesResult = rng.nextBytes(n / 8)
         assertTrue(bytesResult.isSuccess, "Failed to generate random bytes in sequence $sequenceIndex")
 
         val bits = bytesToBits(bytesResult.getOrNull()!!)
@@ -422,7 +430,9 @@ class NistSP80022CoreTests {
     private fun performSingleCusumTest(sequenceIndex: Int): Double {
         val n = NistTestConfig.sequenceLength
 
-        val bytesResult = secureRandom.nextBytes(n / 8)
+        // Create fresh RNG instance for each sequence to ensure true independence
+        val rng = createSecureRandom().getOrThrow()
+        val bytesResult = rng.nextBytes(n / 8)
         assertTrue(bytesResult.isSuccess, "Failed to generate random bytes in sequence $sequenceIndex")
 
         val bits = bytesToBits(bytesResult.getOrNull()!!)
