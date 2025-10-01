@@ -1,5 +1,6 @@
 package com.scottnj.kmp_secure_random.nist
 
+import com.scottnj.kmp_secure_random.SecureRandom
 import com.scottnj.kmp_secure_random.createSecureRandom
 import kotlin.math.abs
 import kotlin.math.sqrt
@@ -89,7 +90,6 @@ class NistSP80022CoreTests {
         val M = 128 // Block size (NIST recommendation: M >= 20)
         val N = n / M // Number of blocks
 
-        // Create fresh RNG instance for each sequence to ensure true independence
         val rng = createSecureRandom().getOrThrow()
         val bytesResult = rng.nextBytes(n / 8)
         assertTrue(bytesResult.isSuccess, "Failed to generate random bytes in sequence $sequenceIndex")
@@ -157,7 +157,6 @@ class NistSP80022CoreTests {
     private fun performSingleRunsTest(sequenceIndex: Int): Double {
         val n = NistTestConfig.sequenceLength
 
-        // Create fresh RNG instance for each sequence to ensure true independence
         val rng = createSecureRandom().getOrThrow()
         val bytesResult = rng.nextBytes(n / 8)
         assertTrue(bytesResult.isSuccess, "Failed to generate random bytes in sequence $sequenceIndex")
@@ -246,7 +245,6 @@ class NistSP80022CoreTests {
         // Categories: ≤4, 5, 6, 7, 8, ≥9
         val probabilities = doubleArrayOf(0.1174, 0.2430, 0.2493, 0.1752, 0.1027, 0.1124)
 
-        // Create fresh RNG instance for each sequence to ensure true independence
         val rng = createSecureRandom().getOrThrow()
         val bytesResult = rng.nextBytes(n / 8)
         assertTrue(bytesResult.isSuccess, "Failed to generate random bytes in sequence $sequenceIndex")
@@ -338,7 +336,6 @@ class NistSP80022CoreTests {
         val n = 38400 // Total bits (must be divisible by M*Q)
         val N = n / (M * Q) // Number of matrices
 
-        // Create fresh RNG instance for each sequence to ensure true independence
         val rng = createSecureRandom().getOrThrow()
         val bytesResult = rng.nextBytes(n / 8)
         assertTrue(bytesResult.isSuccess, "Failed to generate random bytes in sequence $sequenceIndex")
@@ -400,9 +397,12 @@ class NistSP80022CoreTests {
         val testName = "Cumulative Sums (Cusum) Test"
         val pValues = mutableListOf<Double>()
 
-        // Test multiple independent sequences
+        // Create single RNG instance shared across all sequences
+        val rng = createSecureRandom().getOrThrow()
+
+        // Test multiple sequences
         repeat(NistTestConfig.sequenceCount) { sequenceIndex ->
-            val pValue = performSingleCusumTest(sequenceIndex + 1)
+            val pValue = performSingleCusumTest(rng, sequenceIndex + 1)
             pValues.add(pValue)
         }
 
@@ -424,14 +424,13 @@ class NistSP80022CoreTests {
     /**
      * Performs a single Cumulative Sums Test.
      * Tests both forward and backward modes.
+     * @param rng The SecureRandom instance to use
      * @param sequenceIndex The sequence number for logging
      * @return P-value for this sequence (minimum of forward and backward)
      */
-    private fun performSingleCusumTest(sequenceIndex: Int): Double {
+    private fun performSingleCusumTest(rng: SecureRandom, sequenceIndex: Int): Double {
         val n = NistTestConfig.sequenceLength
 
-        // Create fresh RNG instance for each sequence to ensure true independence
-        val rng = createSecureRandom().getOrThrow()
         val bytesResult = rng.nextBytes(n / 8)
         assertTrue(bytesResult.isSuccess, "Failed to generate random bytes in sequence $sequenceIndex")
 
@@ -523,39 +522,42 @@ class NistSP80022CoreTests {
 
     /**
      * Calculate P-value for Cumulative Sums Test.
-     * Uses the formula from NIST SP 800-22 Section 2.13.7 with numerical approximation.
+     * Implements the exact formula from NIST SP 800-22 Rev 1a Section 2.13.7.
      *
-     * Note: This test requires careful implementation due to complex summation formula.
-     * Using a relaxed threshold to account for numerical approximation challenges.
+     * This uses the correct double summation formula from the NIST reference implementation.
+     * Reference: https://github.com/kravietz/nist-sts/blob/master/cusum.c
      */
     private fun calculateCusumPValue(z: Int, n: Int): Double {
         if (z == 0) return 1.0
         if (z >= n) return 0.0
 
         val sqrtN = sqrt(n.toDouble())
-        val zn = z.toDouble() / sqrtN
 
-        // NIST formula involves summations that are challenging to compute accurately
-        // Using a conservative approximation based on normal distribution
-        // This gives reasonable behavior for detecting serious deviations
-
-        // Calculate approximation using complementary error function
-        // This is a simplified version that tends to be conservative
-        val term1 = 1.0 - normalCDF(zn * sqrt(2.0))
-        val term2 = 1.0 - normalCDF((zn + 1.0 / sqrtN) * sqrt(2.0))
-
-        var pValue = 2.0 * minOf(term1, term2)
-
-        // Apply correction factor for better accuracy with smaller z values
-        if (zn < 2.0) {
-            // For smaller deviations, be less strict
-            pValue = minOf(1.0, pValue * 1.5)
+        // Sum1: sum from k = (-n/z+1)/4 to (n/z-1)/4
+        // Formula: Φ((4k+1)z/√n) - Φ((4k-1)z/√n)
+        var sum1 = 0.0
+        val k1Start = ((-n.toDouble() / z + 1.0) / 4.0).toInt()
+        val k1End = ((n.toDouble() / z - 1.0) / 4.0).toInt()
+        for (k in k1Start..k1End) {
+            sum1 += normalCDF(((4 * k + 1) * z).toDouble() / sqrtN)
+            sum1 -= normalCDF(((4 * k - 1) * z).toDouble() / sqrtN)
         }
 
-        // Ensure P-value is in valid range [0, 1]
-        pValue = maxOf(0.0, minOf(1.0, pValue))
+        // Sum2: sum from k = (-n/z-3)/4 to (n/z-1)/4
+        // Formula: Φ((4k+3)z/√n) - Φ((4k+1)z/√n)
+        var sum2 = 0.0
+        val k2Start = ((-n.toDouble() / z - 3.0) / 4.0).toInt()
+        val k2End = ((n.toDouble() / z - 1.0) / 4.0).toInt()
+        for (k in k2Start..k2End) {
+            sum2 += normalCDF(((4 * k + 3) * z).toDouble() / sqrtN)
+            sum2 -= normalCDF(((4 * k + 1) * z).toDouble() / sqrtN)
+        }
 
-        return pValue
+        // NIST formula: P-value = 1 - sum1 + sum2
+        val pValue = 1.0 - sum1 + sum2
+
+        // Ensure P-value is in valid range [0, 1]
+        return maxOf(0.0, minOf(1.0, pValue))
     }
 
     /**
