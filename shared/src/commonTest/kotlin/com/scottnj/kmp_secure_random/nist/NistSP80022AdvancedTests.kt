@@ -56,7 +56,7 @@ class NistSP80022AdvancedTests {
 
         // Test multiple independent sequences
         repeat(NistTestConfig.sequenceCount) { sequenceIndex ->
-            val pValue = performSingleDFTTest(sequenceIndex + 1)
+            val pValue = performSingleDFTTest(secureRandom, sequenceIndex + 1)
             pValues.add(pValue)
         }
 
@@ -77,12 +77,11 @@ class NistSP80022AdvancedTests {
 
     /**
      * Performs a single DFT (Spectral) Test.
+     * @param rng The SecureRandom instance to use
      * @param sequenceIndex The sequence number for logging
      * @return P-value for this sequence
      */
-    private fun performSingleDFTTest(sequenceIndex: Int): Double {
-        // Create fresh RNG instance for each sequence to ensure true independence
-        val rng = createSecureRandom().getOrThrow()
+    private fun performSingleDFTTest(rng: com.scottnj.kmp_secure_random.SecureRandom, sequenceIndex: Int): Double {
 
         // Use configured sequence length, round down to nearest power of 2 for efficiency
         val n = highestOneBit(NistTestConfig.sequenceLength)
@@ -137,7 +136,7 @@ class NistSP80022AdvancedTests {
 
         // Test multiple independent sequences
         repeat(NistTestConfig.sequenceCount) { sequenceIndex ->
-            val pValue = performSingleApproximateEntropyTest(sequenceIndex + 1)
+            val pValue = performSingleApproximateEntropyTest(secureRandom, sequenceIndex + 1)
             pValues.add(pValue)
         }
 
@@ -158,12 +157,11 @@ class NistSP80022AdvancedTests {
 
     /**
      * Performs a single Approximate Entropy Test.
+     * @param rng The SecureRandom instance to use
      * @param sequenceIndex The sequence number for logging
      * @return P-value for this sequence
      */
-    private fun performSingleApproximateEntropyTest(sequenceIndex: Int): Double {
-        // Create fresh RNG instance for each sequence to ensure true independence
-        val rng = createSecureRandom().getOrThrow()
+    private fun performSingleApproximateEntropyTest(rng: com.scottnj.kmp_secure_random.SecureRandom, sequenceIndex: Int): Double {
 
         val n = NistTestConfig.sequenceLength
         val m = 2 // Block length (NIST recommendation: m=2 or m=3)
@@ -234,7 +232,7 @@ class NistSP80022AdvancedTests {
 
         // Test multiple independent sequences
         repeat(NistTestConfig.sequenceCount) { sequenceIndex ->
-            val pValue = performSingleSerialTest(sequenceIndex + 1)
+            val pValue = performSingleSerialTest(secureRandom, sequenceIndex + 1)
             pValues.add(pValue)
         }
 
@@ -255,12 +253,11 @@ class NistSP80022AdvancedTests {
 
     /**
      * Performs a single Serial Test.
+     * @param rng The SecureRandom instance to use
      * @param sequenceIndex The sequence number for logging
      * @return P-value for this sequence (minimum of both test statistics)
      */
-    private fun performSingleSerialTest(sequenceIndex: Int): Double {
-        // Create fresh RNG instance for each sequence to ensure true independence
-        val rng = createSecureRandom().getOrThrow()
+    private fun performSingleSerialTest(rng: com.scottnj.kmp_secure_random.SecureRandom, sequenceIndex: Int): Double {
 
         val n = NistTestConfig.sequenceLength
         val m = 3 // Block length (NIST recommendation: m=3 or m=4)
@@ -474,7 +471,7 @@ class NistSP80022AdvancedTests {
 
         // Test multiple independent sequences
         repeat(NistTestConfig.sequenceCount) { sequenceIndex ->
-            val pValue = performSingleMaurersTest(sequenceIndex + 1)
+            val pValue = performSingleMaurersTest(secureRandom, sequenceIndex + 1)
             pValues.add(pValue)
         }
 
@@ -495,12 +492,11 @@ class NistSP80022AdvancedTests {
 
     /**
      * Performs a single Maurer's Universal Statistical Test.
+     * @param rng The SecureRandom instance to use
      * @param sequenceIndex The sequence number for logging
      * @return P-value for this sequence
      */
-    private fun performSingleMaurersTest(sequenceIndex: Int): Double {
-        // Create fresh RNG instance for each sequence to ensure true independence
-        val rng = createSecureRandom().getOrThrow()
+    private fun performSingleMaurersTest(rng: com.scottnj.kmp_secure_random.SecureRandom, sequenceIndex: Int): Double {
 
         val L = 6 // Block length (NIST: L=6 or L=7)
 
