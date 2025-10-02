@@ -158,9 +158,9 @@ val secureRandom = createSecureRandom(FallbackPolicy.ALLOW_INSECURE).getOrThrow(
 - **Result-based Error Handling**: All operations return `SecureRandomResult<T>` instead of throwing exceptions
 - **Thread-Safe**: All implementations are guaranteed thread-safe
 - **Cross-Platform API**: Consistent interface across all platforms
-- **Statistical Quality Validation**: Comprehensive test suite with 93% pass rate (14/15 tests)
-  - **FIPS 140-2 Statistical Tests**: 100% pass rate (5/5 tests passing)
-  - **NIST SP 800-22 Test Suite**: 90% pass rate (9/10 tests passing)
+- **Statistical Quality Validation**: Comprehensive test suite (14/15 tests execute successfully)
+  - **FIPS 140-2 Statistical Tests**: All tests pass (100% execution success, uses exact FIPS parameters)
+  - **NIST SP 800-22 Test Suite**: 9/10 tests execute successfully (⚠️ **Note**: Some tests have parameter deviations from NIST standards - see [compliance review](#nist-compliance-status))
   - **Cross-platform validation**: All tests run on all 12 KMP targets
 - **Production Ready**: Optimized test suite with ~30 focused test files covering all platforms and security scenarios
 
@@ -177,9 +177,12 @@ The library implements comprehensive statistical testing to validate randomness 
 - **Long Run Test**: Ensures no runs ≥ 26 bits
 - **Full Compliance Test**: Comprehensive validation report
 
-**Pass Rate**: 100% (all 4 required tests + comprehensive report)
+**Execution Success**: 100% (all 4 required tests + comprehensive report)
 
-> ⚠️ **Note**: Passing FIPS 140-2 statistical tests validates randomness quality but does not constitute formal FIPS 140-2 certification. Full certification requires validation by an accredited lab, documentation, physical security, and other requirements.
+> ⚠️ **Important Disclaimers**:
+> - **Standards Compliance**: FIPS 140-2 tests use exact FIPS parameters and pass successfully. NIST SP 800-22 tests execute successfully but some have parameter deviations from official standards (documented in [compliance review](#nist-compliance-status)).
+> - **Not Certified**: This library is **not FIPS 140-2 certified**. Certification requires formal validation by an accredited lab, extensive documentation, physical security controls, and other requirements beyond statistical testing.
+> - **Platform Dependencies**: Security relies entirely on platform-native crypto APIs. This library cannot be independently certified as it wraps external implementations (JVM SecureRandom, Apple SecRandomCopyBytes, Linux getrandom(), etc.).
 
 #### NIST SP 800-22 Test Suite (9/10 Passing)
 
@@ -190,14 +193,14 @@ The library implements comprehensive statistical testing to validate randomness 
 4. Binary Matrix Rank Test
 5. Cumulative Sums (Cusum) Test
 
-**Advanced Tests (4/5 Passing)**:
-1. Discrete Fourier Transform (Spectral) Test ✓
+**Advanced Tests (4/5 Executing)**:
+1. Discrete Fourier Transform (Spectral) Test ✓ (⚠️ capped at 2048 bits, NIST recommends ≥1000 bits)
 2. Approximate Entropy Test ✓
 3. Serial Test ✓
 4. Linear Complexity Test (disabled - requires calibration)
 5. Maurer's Universal Statistical Test ✓
 
-**Pass Rate**: 90% (9/10 tests passing)
+**Execution Success**: 9/10 tests run successfully (⚠️ Some parameter deviations from NIST standards exist)
 
 ### Running Statistical Tests
 
@@ -222,6 +225,42 @@ The library implements comprehensive statistical testing to validate randomness 
 - **Robust validation**: Requires 3/5 passes to reduce false positives
 - **CI/CD integration**: Automatic validation on every commit
 
+### NIST Compliance Status
+
+> 📋 **Standards Compliance Transparency**
+
+**Current Compliance Summary**:
+
+| Standard | Tests | Fully Compliant | Has Deviations | Disabled | Compliance Rate |
+|----------|-------|-----------------|----------------|----------|-----------------|
+| **FIPS 140-2** | 5 | 5 | 0 | 0 | **100%** ✅ |
+| **NIST Core** | 5 | 3 | 2 | 0 | **60%** ⚠️ |
+| **NIST Advanced** | 5 | 3 | 0 | 2 | **60%** ⚠️ |
+| **Overall** | 15 | 11 | 2 | 2 | **73%** |
+
+**What This Means**:
+- ✅ **FIPS 140-2**: All tests use exact FIPS parameters and pass successfully
+- ✅ **Randomness Quality**: All executing tests validate that the generated random numbers have good statistical properties
+- ⚠️ **NIST Parameter Deviations**: Some NIST tests use parameters that deviate from official NIST SP 800-22 recommendations (detailed below)
+- ❌ **Not Standards-Certified**: This library cannot obtain FIPS 140-2 or NIST certification because it wraps external platform implementations
+
+**Known NIST Parameter Deviations**:
+1. **Frequency within Block Test**: Uses M=128, but NIST requires M > 0.01×n (would need M≥1000 for 100K bit sequences)
+2. **Longest Run Test**: Uses custom parameters not in NIST Table 2-4
+3. **DFT Test**: Capped at 2048 bits for performance (NIST recommends testing full sequence)
+
+**Why These Deviations Exist**:
+- Performance tradeoffs for CI/CD pipelines
+- Testing constraints in QUICK mode (100K bits vs NIST minimum 1M bits)
+- Algorithmic complexity limitations (DFT is O(n²) without FFT implementation)
+
+**Next Steps**:
+- All deviations are documented with fixes planned (see [CLAUDE.md compliance checklist](./CLAUDE.md#nist-sp-800-22-standards-compliance-review))
+- Contributors welcome to help achieve full NIST parameter compliance
+- Platform implementations remain production-ready regardless of test parameter tuning
+
+**Important**: The statistical tests validate that the underlying platform crypto APIs produce high-quality randomness. Parameter deviations affect test rigor but don't indicate security issues with the platform implementations themselves.
+
 ## Quick Start
 
 ### Add Dependency
@@ -235,7 +274,7 @@ dependencies {
 }
 ```
 
-**Current Status**: This library is 100% complete with all 12 platform families implemented and production-ready, including comprehensive statistical testing (FIPS 140-2 and NIST SP 800-22 test suites).
+**Current Status**: This library has all 12 platform families fully implemented with comprehensive statistical testing. Platform implementations are production-ready and use native crypto APIs. Statistical tests execute successfully, though some NIST SP 800-22 tests have parameter deviations from official standards that are documented for future refinement (see [NIST compliance review](#nist-compliance-status)).
 
 **To try it now:**
 ```bash
@@ -531,7 +570,11 @@ We welcome contributions to KMP Secure Random! This project aims to provide secu
 
 ### 🎯 **Contribution Areas**
 
-#### **High Priority**
+#### **High Priority - Standards Compliance**
+- **NIST SP 800-22 Parameter Fixes**: Several tests have parameter deviations from NIST standards (see [compliance checklist](./CLAUDE.md#nist-sp-800-22-standards-compliance-review))
+  - Frequency within Block Test: M parameter violates "M > 0.01×n" requirement
+  - Longest Run Test: Uses non-standard parameter combinations
+  - DFT Test: Capped at 2048 bits for performance
 - **Linear Complexity Test Calibration**: Fix the one disabled NIST SP 800-22 test (requires calibration against NIST reference implementation)
 - **Security Audit**: Professional security audit and penetration testing
 - **Maven Central Publishing**: Setup automated publishing pipeline

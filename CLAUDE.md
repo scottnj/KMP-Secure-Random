@@ -152,19 +152,19 @@ The library implements comprehensive NIST SP 800-22 statistical tests to validat
 
 **Location**: `shared/src/commonTest/kotlin/com/scottnj/kmp_secure_random/nist/`
 
-#### Core Tests (NistSP80022CoreTests.kt) - 5/5 Passing ✓
-1. **Frequency Test within a Block**: Tests uniformity in fixed-size blocks
-2. **Runs Test**: Analyzes oscillation between consecutive bits
-3. **Longest Run of Ones Test**: Detects clustering patterns
-4. **Binary Matrix Rank Test**: Linear dependency analysis
-5. **Cumulative Sums (Cusum) Test**: Random walk analysis
+#### Core Tests (NistSP80022CoreTests.kt) - 5/5 Executing (3/5 Standards-Compliant)
+1. **Frequency Test within a Block**: Tests uniformity in fixed-size blocks ⚠️ (M parameter deviation)
+2. **Runs Test**: Analyzes oscillation between consecutive bits ✅ (fully compliant)
+3. **Longest Run of Ones Test**: Detects clustering patterns ⚠️ (non-standard parameters)
+4. **Binary Matrix Rank Test**: Linear dependency analysis ✅ (fully compliant)
+5. **Cumulative Sums (Cusum) Test**: Random walk analysis ✅ (fully compliant)
 
-#### Advanced Tests (NistSP80022AdvancedTests.kt) - 4/5 Passing
-1. **Discrete Fourier Transform (Spectral) Test**: Detects periodic features ✓
-2. **Approximate Entropy Test**: Measures pattern frequency ✓
-3. **Serial Test**: Tests m-bit pattern distribution ✓
-4. **Linear Complexity Test**: Berlekamp-Massey algorithm (needs refinement)
-5. **Maurer's Universal Statistical Test**: Compressibility analysis ✓
+#### Advanced Tests (NistSP80022AdvancedTests.kt) - 4/5 Executing (3/5 Standards-Compliant)
+1. **Discrete Fourier Transform (Spectral) Test**: Detects periodic features ⚠️ (capped at 2048 bits)
+2. **Approximate Entropy Test**: Measures pattern frequency ✅ (fully compliant)
+3. **Serial Test**: Tests m-bit pattern distribution ✅ (fully compliant)
+4. **Linear Complexity Test**: Berlekamp-Massey algorithm ❌ (disabled - needs calibration)
+5. **Maurer's Universal Statistical Test**: Compressibility analysis ✅ (fully compliant)
 
 **Test Configuration**:
 - Significance level: α = 0.01 (99% confidence)
@@ -256,10 +256,159 @@ The project includes dedicated Gradle tasks in the `verification` group for easy
 - **Detailed Reporting**: P-values, chi-square statistics, and pass/fail status with debugging info
 
 **Quality Metrics**:
-- NIST SP 800-22: 9/10 core+advanced tests passing (90% pass rate)
-- FIPS 140-2: 4/4 statistical tests passing (100% pass rate)
-- Total: 14 statistical tests validating randomness quality
+- NIST SP 800-22: 9/10 tests execute successfully (73% standards-compliant - 2 parameter deviations, 2 disabled)
+- FIPS 140-2: 4/4 statistical tests pass with exact FIPS parameters (100% compliant)
+- Execution Success: 14/15 statistical tests run successfully
+- Standards Compliance: 11/15 tests fully compliant with published specifications (73%)
 - Cross-platform: All tests run on all 12 KMP targets
+
+**Important Note**: "Passing" vs "Compliant" distinction:
+- **Passing/Executing**: Tests run successfully and validate randomness quality
+- **Standards-Compliant**: Tests use exact parameters specified in NIST/FIPS documentation
+- This library: All executing tests validate good randomness, but some NIST tests have parameter deviations documented in the compliance review below
+
+### NIST SP 800-22 Standards Compliance Review
+
+**Compliance Status**: ⚠️ **Partial Compliance** - Some tests deviate from official NIST SP 800-22 requirements
+
+> 📋 **Standards Compliance Checklist** - Work items to achieve full NIST SP 800-22 compliance:
+
+#### Critical Standards Violations (HIGH Priority)
+
+- [ ] **Frequency within Block Test - Parameter Fix** (`NistSP80022CoreTests.kt:143`)
+  - **Issue**: M=128 violates NIST requirement "M > 0.01×n"
+  - **Impact**: For QUICK mode (n=100K), requires M > 1000, currently only M=128 (8× too small)
+  - **Fix Required**:
+    - QUICK mode (100K bits): Increase M from 128 to 1024
+    - STANDARD/COMPREHENSIVE (1M bits): Increase M from 128 to 10240 (or 1024 for performance)
+    - Update N = n / M calculation accordingly
+  - **NIST Reference**: SP 800-22 Section 2.2 - "The recommended value for M is that M > 0.01 × n"
+  - **Location**: Line 143: `val M = 128`
+
+- [ ] **Longest Run of Ones Test - Use NIST Table 2-4 Parameters** (`NistSP80022CoreTests.kt:299-313`)
+  - **Issue**: Uses custom parameters (n=6272, M=128, N=49) not in NIST Table 2-4
+  - **Impact**: Testing with non-validated parameter combinations
+  - **Documentation Bug**: Comment says "Uses parameters for n = 75,000" but actually n=6272
+  - **Fix Required**: Use official NIST (n, M, N, K) combinations from Table 2-4:
+    - Option A: (n=6272, M=8, N=784, K=3) - For short sequences
+    - Option B: (n=75000, M=128, N=586, K=5) - For medium sequences
+    - Option C: (n=1000000, M=10000, N=100, K=6) - For full 1M bit sequences
+  - **NIST Reference**: SP 800-22 Section 2.4, Table 2-4 - Official parameter combinations
+  - **Location**: Lines 300-303
+
+- [ ] **DFT Test - Performance vs. Standards Tradeoff** (`NistSP80022AdvancedTests.kt:86-89`)
+  - **Issue**: Explicitly caps at 2048 bits due to O(n²) naive DFT (comment: "Cap at 2048 bits for naive DFT performance")
+  - **Impact**: STANDARD mode (1M bits) only tests 2048 bits instead of full sequence
+  - **Current Code**: `val n = minOf(highestOneBit(NistTestConfig.sequenceLength), 2048)`
+  - **Fix Options**:
+    - **Option A (Full Compliance)**: Implement FFT algorithm (O(n log n)) for full sequence testing
+    - **Option B (Performance)**: Increase cap to 8192-16384 bits, document limitation
+    - **Option C (Hybrid)**: Use FFT for STANDARD/COMPREHENSIVE, naive DFT for QUICK mode
+  - **NIST Reference**: SP 800-22 Section 2.6 - "It is recommended that each sequence to be tested consist of a minimum of 1000 bits (i.e., n ≥ 1000)"
+  - **Note**: Current implementation acknowledges non-compliance in code comment
+  - **Location**: Lines 88-89
+
+#### Medium Priority Issues
+
+- [ ] **QUICK Mode Sequence Length - Below NIST Minimum** (`NistTestConfig.kt:62`)
+  - **Issue**: QUICK mode uses 100K bits, NIST recommends 1M bits minimum
+  - **Impact**: Below recommended sequence length for proper validation
+  - **Current**: `TestMode.QUICK -> 100_000`
+  - **Fix Options**:
+    - **Option A**: Increase QUICK to 1M bits (10× slower, full compliance)
+    - **Option B**: Rename to "FAST" and document as NIST non-compliant
+    - **Option C**: Keep QUICK for CI, recommend STANDARD for certification
+  - **NIST Reference**: SP 800-22 Section 4 - "The minimum length of the tested sequence is 1,000,000 bits"
+  - **Recommendation**: Option C - Keep for CI performance, document limitations
+  - **Location**: Line 62
+
+#### Disabled Tests Requiring Debug (HIGH Priority)
+
+- [ ] **Linear Complexity Test - Debug Chi-Square Calculation** (`NistSP80022AdvancedTests.kt:327`)
+  - **Status**: Currently disabled with `@Ignore` annotation
+  - **Issue**: Chi-square values consistently 77-115 (expected <46.17 for pass)
+  - **Root Cause**: "Uncertain - may be Ti normalization, probability distribution, or category boundaries" (comment line 324)
+  - **Algorithm Status**: Berlekamp-Massey implementation functional, parameters correct (n=1M, M=500, N=2000)
+  - **Debug Steps Required**:
+    1. Compare Ti normalization formula: `Ti = (-1)^(M+1) * (L - μ) / σ` against NIST reference
+    2. Verify expected value μ and variance σ² formulas for M=500
+    3. Check category boundary conditions (7 categories: Ti≤-2.5, -2.5<Ti≤-1.5, ..., Ti>2.5)
+    4. Test with NIST reference test vectors (Appendix B test data)
+    5. Compare against NIST STS C reference implementation
+  - **NIST Reference**: SP 800-22 Section 2.10, Table 2-8 - Linear Complexity probabilities
+  - **Resources**: NIST STS reference code at https://csrc.nist.gov/Projects/Random-Bit-Generation/Documentation-and-Software
+  - **Location**: Lines 327-417
+
+- [ ] **Maurer's Universal Test - Calibration for Finite K** (`NistSP80022AdvancedTests.kt:469`)
+  - **Status**: Currently disabled with `@Ignore` annotation
+  - **Issue**: "Produces clustered P-values with shorter sequences" (comment line 466)
+  - **Root Cause**: "Needs further calibration for expected value and variance with finite K parameters" (comment line 465)
+  - **Minimum Requirements**: NIST requires 387,840 bits for L=6, but QUICK mode only provides 100K
+  - **Fix Options**:
+    - **Option A**: Verify expected value and variance correction formulas for finite K
+    - **Option B**: Disable only for QUICK mode (insufficient bits), enable for STANDARD
+    - **Option C**: Implement adaptive L parameter based on available sequence length
+  - **NIST Reference**: SP 800-22 Section 2.9 - "For L = 6, Q should be at least 640, and K should be at least 1000"
+  - **Current Implementation**: Uses adaptive Q/K based on sequence length, may need formula refinement
+  - **Location**: Lines 469-567
+
+#### Implementation Guidelines for Future Work
+
+**When Fixing NIST Tests - Follow These Rules**:
+
+1. **Always Consult Official NIST SP 800-22 Rev 1a**:
+   - Download from: https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-22r1a.pdf
+   - Reference specific section numbers in code comments
+   - Use exact formulas and constants from the specification
+
+2. **Parameter Selection Priority**:
+   - **First Choice**: Use exact parameters from NIST tables (Tables 2-3, 2-4, 2-5, 2-8, etc.)
+   - **Second Choice**: Follow NIST-stated requirements (e.g., "M > 0.01×n", "n ≥ 1,000,000")
+   - **Last Resort**: If adapting parameters, document deviation and reasoning in code
+
+3. **Test Configuration Modes**:
+   - **QUICK Mode**: Allowed to use smaller sequences for CI performance, but must document as non-compliant
+   - **STANDARD Mode**: MUST meet minimum NIST requirements (1M bits, proper parameters)
+   - **COMPREHENSIVE Mode**: Should exceed minimum requirements for high-confidence validation
+
+4. **Validation Against Reference Implementation**:
+   - When debugging failing tests, compare against NIST STS C reference implementation
+   - Use NIST test vectors from Appendix B for known-good data validation
+   - Cross-check mathematical formulas line-by-line with specification
+
+5. **Documentation Requirements**:
+   - Add NIST section references in comments: `// NIST SP 800-22 Section 2.X`
+   - Document any deviations with clear justification: `// NOTE: Using M=1024 instead of M=10240 for performance`
+   - Update compliance status in CLAUDE.md when fixing issues
+
+6. **Multi-Sequence Testing Requirements** (NIST Section 4.2):
+   - Minimum 55 sequences recommended, 100+ sequences for production
+   - Must check BOTH proportion passing AND P-value uniformity
+   - Proportion must fall within confidence interval: `p̂ ± 3√(p̂(1-p̂)/m)` where p̂=0.99, m=sequence count
+   - P-value uniformity: Chi-square test across 10 bins, minimum P-value ≥ 0.0001
+
+**Reference Resources**:
+- Official Spec: https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-22r1a.pdf
+- NIST STS Software: https://csrc.nist.gov/Projects/Random-Bit-Generation/Documentation-and-Software
+- Test Vectors: NIST STS Appendix B (use for validation)
+- Reference Implementation: https://github.com/terrillmoore/NIST-Statistical-Test-Suite (unofficial mirror)
+
+**Current Compliance Summary**:
+
+| Standard | Tests | Fully Compliant | Has Issues | Disabled | Compliance Rate |
+|----------|-------|-----------------|------------|----------|-----------------|
+| **FIPS 140-2** | 5 | 5 | 0 | 0 | **100%** ✅ |
+| **NIST Core** | 5 | 3 | 2 | 0 | **60%** ⚠️ |
+| **NIST Advanced** | 5 | 3 | 0 | 2 | **60%** ⚠️ |
+| **Overall** | 15 | 11 | 2 | 2 | **73%** |
+
+**Fully Compliant Tests** (No Changes Required):
+- ✅ FIPS 140-2: Monobit, Poker, Runs, Long Run (all use exact FIPS parameters)
+- ✅ NIST Runs Test (correct prerequisite check, proper formulas)
+- ✅ NIST Binary Matrix Rank Test (M=Q=32, correct probabilities)
+- ✅ NIST Cumulative Sums Test (both forward/backward modes, correct P-value calculation)
+- ✅ NIST Approximate Entropy Test (m=2, proper φ(m) calculation)
+- ✅ NIST Serial Test (m=3, both ∇ψ²m and ∇²ψ²m statistics)
 
 ## Implementation Roadmap
 
