@@ -31,6 +31,8 @@ jobs:
       matrix:
         ubuntu-version: [ubuntu-latest, ubuntu-22.04, ubuntu-24.04]
     runs-on: ${{ matrix.ubuntu-version }}
+    env:
+      NIST_TEST_MODE: standard
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -110,6 +112,8 @@ jobs:
       matrix:
         os-version: [windows-latest, windows-2022]
     runs-on: ${{ matrix.os-version }}
+    env:
+      NIST_TEST_MODE: standard
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -132,6 +136,15 @@ jobs:
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
+
+      - name: Cache Kotlin/Native Dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            C:\Users\runneradmin\.konan
+          key: kotlin-native-mingw-${{ runner.os }}-${{ hashFiles('gradle/libs.versions.toml', 'shared/build.gradle.kts') }}
+          restore-keys: |
+            kotlin-native-mingw-${{ runner.os }}-
 
       - name: Display Windows System Information
         run: |

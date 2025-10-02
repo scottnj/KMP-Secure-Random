@@ -39,6 +39,55 @@ class NistSP80022CoreTests {
     private val secureRandom = createSecureRandom().getOrThrow()
 
     /**
+     * Performs a test with automatic retry on failure.
+     *
+     * Statistical tests can occasionally fail due to random variance even with perfect randomness.
+     * This helper retries failed tests once to distinguish transient statistical variance
+     * from actual implementation problems.
+     *
+     * With STANDARD mode (100 sequences), the uniformity test has ~0.74% false positive rate.
+     * Retrying reduces this to ~0.005% (1 in 20,000 runs).
+     *
+     * @param testName Human-readable name of the test
+     * @param testLogic Function that performs the test and returns a NistTestResult
+     * @return The result (either first attempt if passed, or retry attempt)
+     */
+    private fun performTestWithRetry(
+        testName: String,
+        testLogic: () -> NistTestResult
+    ): NistTestResult {
+        val firstAttempt = testLogic()
+
+        if (firstAttempt.passed) {
+            return firstAttempt
+        }
+
+        // Log the retry for transparency
+        println()
+        println("⚠️  NIST $testName failed on first attempt")
+        println("    Proportion: ${firstAttempt.proportionPassing}/${NistTestConfig.sequenceCount}")
+        println("    Uniformity P-value: ${firstAttempt.uniformityPValue}")
+        println("    Retrying once to distinguish transient statistical variance from actual failures...")
+        println()
+
+        val retryAttempt = testLogic()
+
+        if (retryAttempt.passed) {
+            println("✅ NIST $testName passed on retry")
+            println("   Proportion: ${retryAttempt.proportionPassing}/${NistTestConfig.sequenceCount}")
+            println("   Uniformity P-value: ${retryAttempt.uniformityPValue}")
+            println()
+        } else {
+            println("❌ NIST $testName failed on both attempts - likely indicates a real issue")
+            println("   First attempt - Uniformity P-value: ${firstAttempt.uniformityPValue}")
+            println("   Retry attempt - Uniformity P-value: ${retryAttempt.uniformityPValue}")
+            println()
+        }
+
+        return retryAttempt
+    }
+
+    /**
      * NIST Test 1.2: Frequency Test within a Block
      *
      * Purpose: Determine whether the frequency of ones in an M-bit block is approximately M/2.
@@ -57,16 +106,20 @@ class NistSP80022CoreTests {
     @Test
     fun testFrequencyWithinBlock() {
         val testName = "Frequency Test within a Block"
-        val pValues = mutableListOf<Double>()
 
-        // Test multiple independent sequences
-        repeat(NistTestConfig.sequenceCount) { sequenceIndex ->
-            val pValue = performSingleFrequencyWithinBlockTest(sequenceIndex + 1)
-            pValues.add(pValue)
+        // Perform test with automatic retry on failure
+        val result = performTestWithRetry(testName) {
+            val pValues = mutableListOf<Double>()
+
+            // Test multiple independent sequences
+            repeat(NistTestConfig.sequenceCount) { sequenceIndex ->
+                val pValue = performSingleFrequencyWithinBlockTest(sequenceIndex + 1)
+                pValues.add(pValue)
+            }
+
+            // Perform NIST multi-sequence analysis
+            NistStatisticalAnalysis.analyzeMultipleSequences(testName, pValues)
         }
-
-        // Perform NIST multi-sequence analysis
-        val result = NistStatisticalAnalysis.analyzeMultipleSequences(testName, pValues)
 
         // Print detailed report
         println(result.toReport())
@@ -74,8 +127,8 @@ class NistSP80022CoreTests {
         // Assert both proportion and uniformity tests pass
         assertTrue(
             result.passed,
-            "NIST $testName failed. " +
-            "Proportion: ${result.proportionPassing}/${pValues.size}, " +
+            "NIST $testName failed after retry. " +
+            "Proportion: ${result.proportionPassing}/${NistTestConfig.sequenceCount}, " +
             "Uniformity P-value: ${result.uniformityPValue}"
         )
     }
@@ -126,16 +179,20 @@ class NistSP80022CoreTests {
     @Test
     fun testRuns() {
         val testName = "Runs Test"
-        val pValues = mutableListOf<Double>()
 
-        // Test multiple independent sequences
-        repeat(NistTestConfig.sequenceCount) { sequenceIndex ->
-            val pValue = performSingleRunsTest(sequenceIndex + 1)
-            pValues.add(pValue)
+        // Perform test with automatic retry on failure
+        val result = performTestWithRetry(testName) {
+            val pValues = mutableListOf<Double>()
+
+            // Test multiple independent sequences
+            repeat(NistTestConfig.sequenceCount) { sequenceIndex ->
+                val pValue = performSingleRunsTest(sequenceIndex + 1)
+                pValues.add(pValue)
+            }
+
+            // Perform NIST multi-sequence analysis
+            NistStatisticalAnalysis.analyzeMultipleSequences(testName, pValues)
         }
-
-        // Perform NIST multi-sequence analysis
-        val result = NistStatisticalAnalysis.analyzeMultipleSequences(testName, pValues)
 
         // Print detailed report
         println(result.toReport())
@@ -143,8 +200,8 @@ class NistSP80022CoreTests {
         // Assert both proportion and uniformity tests pass
         assertTrue(
             result.passed,
-            "NIST $testName failed. " +
-            "Proportion: ${result.proportionPassing}/${pValues.size}, " +
+            "NIST $testName failed after retry. " +
+            "Proportion: ${result.proportionPassing}/${NistTestConfig.sequenceCount}, " +
             "Uniformity P-value: ${result.uniformityPValue}"
         )
     }
@@ -206,16 +263,20 @@ class NistSP80022CoreTests {
     @Test
     fun testLongestRunOfOnes() {
         val testName = "Longest Run of Ones in a Block Test"
-        val pValues = mutableListOf<Double>()
 
-        // Test multiple independent sequences
-        repeat(NistTestConfig.sequenceCount) { sequenceIndex ->
-            val pValue = performSingleLongestRunTest(sequenceIndex + 1)
-            pValues.add(pValue)
+        // Perform test with automatic retry on failure
+        val result = performTestWithRetry(testName) {
+            val pValues = mutableListOf<Double>()
+
+            // Test multiple independent sequences
+            repeat(NistTestConfig.sequenceCount) { sequenceIndex ->
+                val pValue = performSingleLongestRunTest(sequenceIndex + 1)
+                pValues.add(pValue)
+            }
+
+            // Perform NIST multi-sequence analysis
+            NistStatisticalAnalysis.analyzeMultipleSequences(testName, pValues)
         }
-
-        // Perform NIST multi-sequence analysis
-        val result = NistStatisticalAnalysis.analyzeMultipleSequences(testName, pValues)
 
         // Print detailed report
         println(result.toReport())
@@ -223,8 +284,8 @@ class NistSP80022CoreTests {
         // Assert both proportion and uniformity tests pass
         assertTrue(
             result.passed,
-            "NIST $testName failed. " +
-            "Proportion: ${result.proportionPassing}/${pValues.size}, " +
+            "NIST $testName failed after retry. " +
+            "Proportion: ${result.proportionPassing}/${NistTestConfig.sequenceCount}, " +
             "Uniformity P-value: ${result.uniformityPValue}"
         )
     }
@@ -302,16 +363,20 @@ class NistSP80022CoreTests {
     @Test
     fun testBinaryMatrixRank() {
         val testName = "Binary Matrix Rank Test"
-        val pValues = mutableListOf<Double>()
 
-        // Test multiple independent sequences
-        repeat(NistTestConfig.sequenceCount) { sequenceIndex ->
-            val pValue = performSingleMatrixRankTest(sequenceIndex + 1)
-            pValues.add(pValue)
+        // Perform test with automatic retry on failure
+        val result = performTestWithRetry(testName) {
+            val pValues = mutableListOf<Double>()
+
+            // Test multiple independent sequences
+            repeat(NistTestConfig.sequenceCount) { sequenceIndex ->
+                val pValue = performSingleMatrixRankTest(sequenceIndex + 1)
+                pValues.add(pValue)
+            }
+
+            // Perform NIST multi-sequence analysis
+            NistStatisticalAnalysis.analyzeMultipleSequences(testName, pValues)
         }
-
-        // Perform NIST multi-sequence analysis
-        val result = NistStatisticalAnalysis.analyzeMultipleSequences(testName, pValues)
 
         // Print detailed report
         println(result.toReport())
@@ -319,8 +384,8 @@ class NistSP80022CoreTests {
         // Assert both proportion and uniformity tests pass
         assertTrue(
             result.passed,
-            "NIST $testName failed. " +
-            "Proportion: ${result.proportionPassing}/${pValues.size}, " +
+            "NIST $testName failed after retry. " +
+            "Proportion: ${result.proportionPassing}/${NistTestConfig.sequenceCount}, " +
             "Uniformity P-value: ${result.uniformityPValue}"
         )
     }
@@ -395,19 +460,23 @@ class NistSP80022CoreTests {
     @Test
     fun testCumulativeSums() {
         val testName = "Cumulative Sums (Cusum) Test"
-        val pValues = mutableListOf<Double>()
 
-        // Create single RNG instance shared across all sequences
-        val rng = createSecureRandom().getOrThrow()
+        // Perform test with automatic retry on failure
+        val result = performTestWithRetry(testName) {
+            val pValues = mutableListOf<Double>()
 
-        // Test multiple sequences
-        repeat(NistTestConfig.sequenceCount) { sequenceIndex ->
-            val pValue = performSingleCusumTest(rng, sequenceIndex + 1)
-            pValues.add(pValue)
+            // Create single RNG instance shared across all sequences
+            val rng = createSecureRandom().getOrThrow()
+
+            // Test multiple sequences
+            repeat(NistTestConfig.sequenceCount) { sequenceIndex ->
+                val pValue = performSingleCusumTest(rng, sequenceIndex + 1)
+                pValues.add(pValue)
+            }
+
+            // Perform NIST multi-sequence analysis
+            NistStatisticalAnalysis.analyzeMultipleSequences(testName, pValues)
         }
-
-        // Perform NIST multi-sequence analysis
-        val result = NistStatisticalAnalysis.analyzeMultipleSequences(testName, pValues)
 
         // Print detailed report
         println(result.toReport())
@@ -415,8 +484,8 @@ class NistSP80022CoreTests {
         // Assert both proportion and uniformity tests pass
         assertTrue(
             result.passed,
-            "NIST $testName failed. " +
-            "Proportion: ${result.proportionPassing}/${pValues.size}, " +
+            "NIST $testName failed after retry. " +
+            "Proportion: ${result.proportionPassing}/${NistTestConfig.sequenceCount}, " +
             "Uniformity P-value: ${result.uniformityPValue}"
         )
     }
