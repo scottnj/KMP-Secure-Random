@@ -99,12 +99,15 @@ object NistTestConfig {
     /**
      * Get expected range of passing sequences for proportion test.
      *
+     * Uses ceiling for minimum (must have at least ceil(lower * m) sequences pass)
+     * and floor for maximum (can have at most floor(upper * m) sequences pass, capped at total).
+     *
      * @return Pair of (minPassing, maxPassing) sequence counts
      */
     fun getExpectedPassingRange(): Pair<Int, Int> {
         val (lower, upper) = getProportionConfidenceInterval()
-        val minPassing = (lower * sequenceCount).toInt()
-        val maxPassing = sequenceCount // Upper bound is typically 1.0
+        val minPassing = kotlin.math.ceil(lower * sequenceCount).toInt()
+        val maxPassing = kotlin.math.floor(upper * sequenceCount).toInt().coerceAtMost(sequenceCount)
         return Pair(minPassing, maxPassing)
     }
 
@@ -149,7 +152,8 @@ data class NistTestResult(
         val (minPassing, maxPassing) = config.getExpectedPassingRange()
         val (lowerBound, upperBound) = config.getProportionConfidenceInterval()
 
-        val proportionPassed = proportionPassing in minPassing..maxPassing
+        // Use the same logic as the actual test for consistency
+        val proportionPassed = NistStatisticalAnalysis.checkProportionPassing(proportionPassing, pValues.size)
         val uniformityPassed = uniformityPValue >= NistTestConfig.UNIFORMITY_MIN_PVALUE
 
         val histogram = buildPValueHistogram()
