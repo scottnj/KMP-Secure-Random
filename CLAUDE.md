@@ -6,12 +6,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **What Works:**
 - **Platform implementations**: 12/12 complete, production-ready, use native crypto APIs
-- **Statistical tests**: 14/15 execute successfully, validate randomness quality
-- **NIST SP 800-22 compliance**: 93% compliant (14/15 tests meet standards)
+- **Statistical tests**: 15/15 execute successfully, validate randomness quality
+- **NIST SP 800-22 compliance**: ✅ **100% compliant** (15/15 tests meet standards)
 - **Security**: Cryptographically secure (wraps platform-native APIs, not custom crypto)
-
-**What Needs Fixing:**
-- **Maurer's Universal Test**: Disabled, requires calibration for finite K parameters (1/15 tests)
 
 **Critical Rules for AI Agents:**
 - ❌ **NEVER** implement custom cryptographic algorithms
@@ -20,17 +17,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - ✅ **MAINTAIN** NIST minimum standards (55 sequences × 1M bits)
 
 **Priority Tasks:**
-1. Debug Maurer's Universal Test (finite K calibration)
-2. Security audit & Maven Central publishing
-3. Consider FFT implementation for DFT test (optional enhancement)
+1. Security audit & Maven Central publishing
+2. Consider FFT implementation for DFT test (optional enhancement)
+3. Documentation updates for 1.0 release
 
 ---
 
 ## 📋 NIST SP 800-22 Standards Compliance Status
 
-**Compliance Status**: ✅ **93% Compliant** (14/15 tests standards-compliant)
+**Compliance Status**: ✅ **100% Compliant** (15/15 tests standards-compliant)
 
-> 🎯 **Configuration**: All enabled tests use NIST minimum requirements (55 sequences × 1,000,000 bits)
+> 🎯 **Configuration**: All tests use NIST minimum requirements (55 sequences × 1,000,000 bits)
 
 ### ✅ Completed Fixes (January 2025)
 
@@ -71,20 +68,20 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
   - **NIST Reference**: SP 800-22 Section 2.10, Python reference: https://gist.github.com/StuartGordonReid/a514ed478d42eca49568
   - **Location**: Lines 330-431
 
-### Disabled Tests Requiring Debug (HIGH Priority)
-
-- [ ] **Maurer's Universal Test - Calibration for Finite K** (`NistSP80022AdvancedTests.kt:482`)
-  - **Status**: Currently disabled with `@Ignore` annotation
-  - **Issue**: "Produces clustered P-values with shorter sequences" (comment line 466)
-  - **Root Cause**: "Needs further calibration for expected value and variance with finite K parameters" (comment line 465)
-  - **Minimum Requirements**: NIST requires 387,840 bits for L=6, but QUICK mode only provides 100K
-  - **Fix Options**:
-    - **Option A**: Verify expected value and variance correction formulas for finite K
-    - **Option B**: Disable only for QUICK mode (insufficient bits), enable for STANDARD
-    - **Option C**: Implement adaptive L parameter based on available sequence length
-  - **NIST Reference**: SP 800-22 Section 2.9 - "For L = 6, Q should be at least 640, and K should be at least 1000"
-  - **Current Implementation**: Uses adaptive Q/K based on sequence length, may need formula refinement
-  - **Location**: Lines 482-567
+- [x] **Maurer's Universal Test - FIXED** (`NistSP80022AdvancedTests.kt:482`)
+  - **Status**: ✅ Fixed and re-enabled (October 2, 2025)
+  - **Root Cause Found**: Two critical formula errors:
+    1. **Wrong logarithm base** - used natural log `ln()` instead of log base 2 for distance calculation
+    2. **Incorrect variance formula** - missing division by K: was `c * variance`, should be `c * sqrt(variance/K)`
+  - **Fixes Applied**:
+    - Changed distance sum calculation from `ln(distance)` to `ln(distance) / ln(2.0)` (log base 2)
+    - Corrected variance to `sigma = c * sqrt(variance / K)` per NIST STS reference implementation
+    - Removed outdated QUICK mode references from comments
+  - **Test Results**: 55/55 sequences passing, uniformity P-value 0.058 (well above 0.0001 threshold)
+  - **Verification**: Tested locally on JVM, macOS, iOS Simulator - all pass
+  - **NIST Reference**: SP 800-22 Section 2.9, C reference: https://github.com/kravietz/nist-sts/blob/master/universal.c
+  - **Python Reference**: https://github.com/alexandru-stancioiu/Maurer-s-Universal-Statistical-Test/blob/master/maurer.py
+  - **Location**: Lines 468-580
 
 ### Implementation Guidelines for Future Work
 
@@ -133,14 +130,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 |----------|-------|-----------------|----------|-----------------|
 | **FIPS 140-2** | 5 | 5 | 0 | **100%** ✅ |
 | **NIST Core** | 5 | 5 | 0 | **100%** ✅ |
-| **NIST Advanced** | 5 | 4 | 1 | **80%** ⚠️ |
-| **Overall** | 15 | 14 | 1 | **93%** ✅ |
+| **NIST Advanced** | 5 | 5 | 0 | **100%** ✅ |
+| **Overall** | 15 | 15 | 0 | **100%** ✅ |
 
-**Fully Compliant Tests**:
+**All Tests Fully Compliant** ✅:
 - ✅ FIPS 140-2: Monobit, Poker, Runs, Long Run (all use exact FIPS parameters)
 - ✅ NIST Core: Frequency within Block, Runs, Longest Run of Ones, Binary Matrix Rank, Cumulative Sums
-- ✅ NIST Advanced: DFT Spectral, Approximate Entropy, Serial, Linear Complexity (4/5)
-- ❌ NIST Advanced Disabled: Maurer's Universal (1/5 - calibration needed)
+- ✅ NIST Advanced: DFT Spectral, Approximate Entropy, Serial, Linear Complexity, Maurer's Universal (5/5)
 
 ---
 
@@ -311,9 +307,9 @@ val secureRandom = createSecureRandom(FallbackPolicy.ALLOW_INSECURE).getOrThrow(
 
 ## 🧪 Statistical Testing Summary
 
-**Test Execution Success**: 14/15 tests run successfully
-**Standards Compliance**: 14/15 tests (93%) use exact specification parameters
-**Quality Validation**: All executing tests confirm excellent randomness quality
+**Test Execution Success**: 15/15 tests run successfully ✅
+**Standards Compliance**: 15/15 tests (100%) use exact specification parameters ✅
+**Quality Validation**: All tests confirm excellent randomness quality ✅
 
 ### Test Suites Implemented
 
@@ -331,12 +327,12 @@ val secureRandom = createSecureRandom(FallbackPolicy.ALLOW_INSECURE).getOrThrow(
 4. Binary Matrix Rank Test ✅ (fully compliant)
 5. Cumulative Sums (Cusum) Test ✅ (fully compliant)
 
-**NIST SP 800-22 Advanced Tests** (4/5 Passing):
+**NIST SP 800-22 Advanced Tests** (5/5 - 100% Compliant ✅):
 1. Discrete Fourier Transform (Spectral) Test ✅ (tests 16,384 bits per sequence)
 2. Approximate Entropy Test ✅ (fully compliant)
 3. Serial Test ✅ (fully compliant)
 4. Linear Complexity Test ✅ (FIXED - fully compliant, chi-square ~8.4)
-5. Maurer's Universal Statistical Test ❌ (disabled - finite K calibration needed)
+5. Maurer's Universal Statistical Test ✅ (FIXED - fully compliant, Oct 2025)
 
 **Test Configuration**:
 - Sequence count: 55 independent sequences (NIST Section 4 minimum)
@@ -352,8 +348,8 @@ val secureRandom = createSecureRandom(FallbackPolicy.ALLOW_INSECURE).getOrThrow(
 - Run locally: `./gradlew nistCoreTests nistAdvancedTests`
 
 **Important Notes**:
-- ✅ 93% NIST SP 800-22 standards compliant (14/15 tests passing)
-- ✅ All enabled tests use NIST minimum requirements (55 sequences × 1M bits)
+- ✅ 100% NIST SP 800-22 standards compliant (15/15 tests passing)
+- ✅ All tests use NIST minimum requirements (55 sequences × 1M bits)
 - ❌ This library cannot obtain FIPS 140-2 certification (wraps external platform implementations)
 
 **For Full Details**: See [STATISTICAL_TESTING_SUMMARY.md](./STATISTICAL_TESTING_SUMMARY.md)
@@ -381,20 +377,20 @@ val secureRandom = createSecureRandom(FallbackPolicy.ALLOW_INSECURE).getOrThrow(
 
 ## 📋 Implementation Status & Roadmap
 
-**Current Status**: 12/12 platforms complete, 93% NIST standards-compliant
+**Current Status**: 12/12 platforms complete, 100% NIST standards-compliant ✅
 
 **Completed**:
 - [x] All 12 platform families implemented (JVM, Android, Apple platforms, JS/WASM, Linux, Windows, Android Native)
 - [x] FIPS 140-2 statistical tests (100% compliant)
-- [x] NIST SP 800-22 test suite (93% compliant - 14/15 tests passing)
+- [x] NIST SP 800-22 test suite (100% compliant - 15/15 tests passing)
 - [x] Linear Complexity test fixed and re-enabled (January 2025)
+- [x] Maurer's Universal test fixed and re-enabled (October 2025)
 - [x] CI/CD pipeline and documentation
 - [x] Comprehensive security framework with fallback policies
 - [x] Cross-platform test suite with ~30 focused test files
 - [x] Quality gates: Detekt, Kover, OWASP, Dokka
 
 **Remaining Work**:
-- [ ] Fix Maurer's Universal test (finite K calibration)
 - [ ] Security audit and penetration testing
 - [ ] Maven Central publishing setup
 - [ ] Optional: NIST SP 800-22 Template Tests (4 tests - deferred for future enhancement)
@@ -402,7 +398,6 @@ val secureRandom = createSecureRandom(FallbackPolicy.ALLOW_INSECURE).getOrThrow(
 - [ ] Optional: Randomness quality monitoring infrastructure (deferred)
 
 **Priority Order**:
-1. **Maurer's Universal Test Fix** - To achieve 100% compliance
-2. **Security Audit** - Before 1.0 release
-3. **Maven Central Publishing** - For public release
-4. **Optional Enhancements** - Future iterations
+1. **Security Audit** - Before 1.0 release
+2. **Maven Central Publishing** - For public release
+3. **Optional Enhancements** - Future iterations

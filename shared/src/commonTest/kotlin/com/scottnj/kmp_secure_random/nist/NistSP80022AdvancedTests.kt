@@ -473,13 +473,11 @@ class NistSP80022AdvancedTests {
      *
      * A significantly compressible sequence is considered to be non-random.
      *
-     * **CURRENTLY DISABLED**: This test requires minimum 387,840 bits per sequence (NIST requirement
-     * for L=6), but QUICK mode only provides 100,000 bits and STANDARD provides 1,000,000 bits.
-     * The test produces clustered P-values with shorter sequences, indicating it needs further
-     * calibration for expected value and variance with finite K parameters.
+     * **FIXED**: Corrected variance calculation to divide by K (sigma = c * sqrt(variance/K))
+     * per NIST STS reference implementation. Test now uses 1M bit sequences (166,666 blocks),
+     * which well exceeds NIST minimum requirements for L=6 (Q≥640, K≥1000).
      * See NIST SP 800-22 Section 2.9 for parameter requirements.
      */
-    @Ignore
     @Test
     fun testMaurersUniversalStatistical() {
         val testName = "Maurer's Universal Statistical Test"
@@ -556,7 +554,7 @@ class NistSP80022AdvancedTests {
             }
 
             val distance = i - lastOccurrence[pattern]
-            sum += ln(distance.toDouble())
+            sum += ln(distance.toDouble()) / ln(2.0)  // log base 2 = ln(x) / ln(2)
             lastOccurrence[pattern] = i
         }
 
@@ -570,11 +568,12 @@ class NistSP80022AdvancedTests {
         val variance = 2.954 // Theoretical σ² for L=6
 
         // Apply correction factor for finite K (NIST Section 2.9.4)
+        // Formula from NIST STS reference: sigma = c * sqrt(variance/K)
         val c = 0.7 - 0.8/L.toDouble() + (4.0 + 32.0/L.toDouble()) * (K.toDouble().pow(-3.0/L.toDouble())) / 15.0
-        val correctedVariance = c * variance
+        val sigma = c * sqrt(variance / K.toDouble())
 
-        // Calculate test statistic with corrected variance
-        val testStat = abs(fn - expectedValue) / sqrt(correctedVariance)
+        // Calculate test statistic (NIST formula: |fn - μ| / (sqrt(2) * sigma))
+        val testStat = abs(fn - expectedValue) / sigma
 
         // Calculate P-value using complementary error function
         return erfc(testStat / sqrt(2.0))
