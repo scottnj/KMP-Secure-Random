@@ -289,6 +289,8 @@ class NistSP80022AdvancedTests {
 
     /**
      * Calculate ψ²m for Serial Test.
+     * NIST SP 800-22 Section 2.11 formula: ψ²m = (Σ(vᵢ²) * 2^m / n) - n
+     * where vᵢ is the count of pattern i appearing in the sequence.
      */
     private fun calculatePsiSquared(bits: IntArray, n: Int, m: Int): Double {
         val patternSize = 1 shl m // 2^m
@@ -303,10 +305,11 @@ class NistSP80022AdvancedTests {
             counts[pattern]++
         }
 
-        // Calculate ψ²
+        // Calculate ψ² = (Σ(count²) * 2^m / n) - n
+        // NOTE: Cast to Long to avoid integer overflow for large counts
         var sum = 0.0
         for (count in counts) {
-            sum += count * count
+            sum += count.toLong() * count.toLong()
         }
 
         return (sum * patternSize / n) - n
