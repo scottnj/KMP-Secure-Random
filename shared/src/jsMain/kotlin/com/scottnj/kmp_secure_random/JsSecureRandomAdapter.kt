@@ -351,15 +351,27 @@ internal class JsSecureRandomAdapter private constructor(
 
     /**
      * Internal helper method to fill bytes using the appropriate crypto API
+     *
+     * Note: Web Crypto API's getRandomValues() has a 65,536 byte limit per call.
+     * For larger arrays, we chunk the requests to stay within this limit.
      */
     private fun fillBytesInternal(bytes: ByteArray) {
         when (environment) {
             JsEnvironment.BROWSER -> {
-                val uint8Array = Uint8Array(bytes.size)
-                cryptoApi.getRandomValues(uint8Array)
+                // Web Crypto API limit: 65,536 bytes per getRandomValues() call
+                val maxChunkSize = 65536
+                var offset = 0
 
-                for (i in bytes.indices) {
-                    bytes[i] = uint8Array.asDynamic()[i].unsafeCast<Int>().toByte()
+                while (offset < bytes.size) {
+                    val chunkSize = minOf(maxChunkSize, bytes.size - offset)
+                    val uint8Array = Uint8Array(chunkSize)
+                    cryptoApi.getRandomValues(uint8Array)
+
+                    for (i in 0 until chunkSize) {
+                        bytes[offset + i] = uint8Array.asDynamic()[i].unsafeCast<Int>().toByte()
+                    }
+
+                    offset += chunkSize
                 }
             }
             JsEnvironment.NODEJS -> {

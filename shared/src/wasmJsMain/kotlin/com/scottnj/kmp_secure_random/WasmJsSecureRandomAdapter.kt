@@ -373,13 +373,22 @@ internal class WasmJsSecureRandomAdapter private constructor(
     private fun fillBytesInternal(bytes: ByteArray) {
         try {
             if (isCryptoAvailable()) {
-                // Use Web Crypto API (secure)
-                val uint8Array = createUint8Array(bytes.size)
-                crypto.getRandomValues(uint8Array)
+                // Use Web Crypto API (secure) with chunking for large arrays
+                // Web Crypto API limit: 65,536 bytes per getRandomValues() call
+                val maxChunkSize = 65536
+                var offset = 0
 
-                for (i in bytes.indices) {
-                    val byteValue = getArrayByte(uint8Array, i)
-                    bytes[i] = (byteValue and 0xFF).toByte()
+                while (offset < bytes.size) {
+                    val chunkSize = minOf(maxChunkSize, bytes.size - offset)
+                    val uint8Array = createUint8Array(chunkSize)
+                    crypto.getRandomValues(uint8Array)
+
+                    for (i in 0 until chunkSize) {
+                        val byteValue = getArrayByte(uint8Array, i)
+                        bytes[offset + i] = (byteValue and 0xFF).toByte()
+                    }
+
+                    offset += chunkSize
                 }
 
                 logger.v { "Successfully generated ${bytes.size} random bytes using WASM-JS Web Crypto API" }
@@ -430,13 +439,22 @@ internal class WasmJsSecureRandomAdapter private constructor(
     private fun fillBytesWithInsecureFallback(bytes: ByteArray) {
         try {
             if (isCryptoAvailable()) {
-                // Use Web Crypto API (secure)
-                val uint8Array = createUint8Array(bytes.size)
-                crypto.getRandomValues(uint8Array)
+                // Use Web Crypto API (secure) with chunking for large arrays
+                // Web Crypto API limit: 65,536 bytes per getRandomValues() call
+                val maxChunkSize = 65536
+                var offset = 0
 
-                for (i in bytes.indices) {
-                    val byteValue = getArrayByte(uint8Array, i)
-                    bytes[i] = (byteValue and 0xFF).toByte()
+                while (offset < bytes.size) {
+                    val chunkSize = minOf(maxChunkSize, bytes.size - offset)
+                    val uint8Array = createUint8Array(chunkSize)
+                    crypto.getRandomValues(uint8Array)
+
+                    for (i in 0 until chunkSize) {
+                        val byteValue = getArrayByte(uint8Array, i)
+                        bytes[offset + i] = (byteValue and 0xFF).toByte()
+                    }
+
+                    offset += chunkSize
                 }
 
                 logger.v { "Successfully generated ${bytes.size} random bytes using WASM-JS Web Crypto API" }

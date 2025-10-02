@@ -76,18 +76,16 @@ class NistSP80022AdvancedTests {
     }
 
     /**
-     * Performs a single DFT (Spectral) Test.
+     * Performs a single DFT (Spectral) Test using FFT.
      * @param rng The SecureRandom instance to use
      * @param sequenceIndex The sequence number for logging
      * @return P-value for this sequence
      */
     private fun performSingleDFTTest(rng: com.scottnj.kmp_secure_random.SecureRandom, sequenceIndex: Int): Double {
 
-        // Use configured sequence length, round down to nearest power of 2 for efficiency
-        // Cap at 16,384 bits (2^14) for practical test execution time with naive DFT
-        // Note: Naive DFT is O(n²) complexity - 16K bits takes ~2 min, 524K would take hours
-        // (Future enhancement: FFT implementation would allow testing full sequences)
-        val n = minOf(highestOneBit(NistTestConfig.sequenceLength), 16384)
+        // Use configured sequence length, round down to nearest power of 2 for FFT
+        // FFT is O(n log n) complexity - can efficiently test full 1M bit sequences
+        val n = highestOneBit(NistTestConfig.sequenceLength)
 
         val bytesResult = rng.nextBytes(n / 8)
         assertTrue(bytesResult.isSuccess, "Failed to generate random bytes in sequence $sequenceIndex")
@@ -97,18 +95,11 @@ class NistSP80022AdvancedTests {
         // Convert bits to ±1
         val sequence = bits.map { if (it == 0) -1.0 else 1.0 }.toDoubleArray()
 
-        // Apply DFT (using simplified real-only approach for efficiency)
-        val modulus = DoubleArray(n / 2)
-        for (k in 0 until n / 2) {
-            var sumReal = 0.0
-            var sumImag = 0.0
-            for (j in 0 until n) {
-                val angle = 2.0 * PI * k * j / n
-                sumReal += sequence[j] * cos(angle)
-                sumImag += sequence[j] * sin(angle)
-            }
-            modulus[k] = sqrt(sumReal * sumReal + sumImag * sumImag)
-        }
+        // Apply FFT (O(n log n) complexity)
+        val fftResult = fft(sequence)
+
+        // Use first half of FFT result (second half is symmetric for real input)
+        val modulus = fftResult.sliceArray(0 until n / 2)
 
         // Count peaks exceeding 95% threshold
         val threshold = sqrt(3.0 * n) // 95% threshold from NIST
@@ -718,5 +709,87 @@ class NistSP80022AdvancedTests {
         n = n or (n shr 8)
         n = n or (n shr 16)
         return n - (n shr 1)
+    }
+
+    /**
+     * Fast Fourier Transform (FFT) using Cooley-Tukey radix-2 algorithm.
+     *
+     * Computes the DFT of a real sequence with O(n log n) complexity.
+     * This replaces the naive O(n²) DFT implementation.
+     *
+     * @param sequence Input sequence (must be power of 2 length)
+     * @return Array of magnitudes (modulus) for each frequency component
+     *
+     * Algorithm: Iterative Cooley-Tukey with bit-reversal permutation
+     * Reference: Cooley & Tukey (1965), "An algorithm for the machine calculation of complex Fourier series"
+     */
+    private fun fft(sequence: DoubleArray): DoubleArray {
+        val n = sequence.size
+        require(n > 0 && (n and (n - 1)) == 0) { "FFT requires power-of-2 length, got $n" }
+
+        // Initialize complex arrays (real and imaginary parts)
+        val real = DoubleArray(n) { sequence[it] }
+        val imag = DoubleArray(n) { 0.0 }
+
+        // Bit-reversal permutation
+        var j = 0
+        for (i in 0 until n - 1) {
+            if (i < j) {
+                // Swap real parts
+                val tempReal = real[i]
+                real[i] = real[j]
+                real[j] = tempReal
+                // Swap imaginary parts
+                val tempImag = imag[i]
+                imag[i] = imag[j]
+                imag[j] = tempImag
+            }
+            var k = n / 2
+            while (k <= j) {
+                j -= k
+                k /= 2
+            }
+            j += k
+        }
+
+        // Cooley-Tukey decimation-in-time radix-2 FFT
+        var length = 2
+        while (length <= n) {
+            val angle = -2.0 * PI / length
+            val wlenReal = cos(angle)
+            val wlenImag = sin(angle)
+
+            var i = 0
+            while (i < n) {
+                var wReal = 1.0
+                var wImag = 0.0
+
+                for (j in 0 until length / 2) {
+                    val idx1 = i + j
+                    val idx2 = i + j + length / 2
+
+                    val tReal = wReal * real[idx2] - wImag * imag[idx2]
+                    val tImag = wReal * imag[idx2] + wImag * real[idx2]
+
+                    real[idx2] = real[idx1] - tReal
+                    imag[idx2] = imag[idx1] - tImag
+                    real[idx1] = real[idx1] + tReal
+                    imag[idx1] = imag[idx1] + tImag
+
+                    val wTempReal = wReal * wlenReal - wImag * wlenImag
+                    wImag = wReal * wlenImag + wImag * wlenReal
+                    wReal = wTempReal
+                }
+
+                i += length
+            }
+
+            length *= 2
+        }
+
+        // Compute magnitudes (modulus of complex numbers)
+        return DoubleArray(n) { i ->
+            sqrt(real[i] * real[i] + imag[i] * imag[i])
+        }
     }
 }

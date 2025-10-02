@@ -64,8 +64,11 @@ kotlin {
         nodejs {
             testTask {
                 useMocha {
-                    timeout = "10s"  // Increase from default 2s for computationally expensive NIST DFT test
+                    timeout = "30s"  // Increase from default 2s for NIST tests with 100 sequences (DFT, Linear Complexity)
                 }
+                // Increase Node.js heap size for NIST tests with 100 sequences × 1M bits
+                // Default is ~512MB, increase to 4GB to handle FFT allocations
+                environment("NODE_OPTIONS", "--max-old-space-size=4096")
             }
         }
         binaries.library()
