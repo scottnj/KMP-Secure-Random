@@ -31,8 +31,6 @@ jobs:
       matrix:
         ubuntu-version: [ubuntu-latest, ubuntu-22.04, ubuntu-24.04]
     runs-on: ${{ matrix.ubuntu-version }}
-    env:
-      NIST_TEST_MODE: standard
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -112,8 +110,6 @@ jobs:
       matrix:
         os-version: [windows-latest, windows-2022]
     runs-on: ${{ matrix.os-version }}
-    env:
-      NIST_TEST_MODE: standard
     steps:
       - name: Checkout
         uses: actions/checkout@v4

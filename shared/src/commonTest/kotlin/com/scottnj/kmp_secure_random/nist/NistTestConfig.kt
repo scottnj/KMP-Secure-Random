@@ -5,64 +5,24 @@ import kotlin.math.sqrt
 /**
  * Configuration for NIST SP 800-22 statistical tests.
  *
- * NIST SP 800-22 recommends testing multiple independent sequences (minimum 55, recommended 100+)
- * of sufficient length (minimum 1,000,000 bits) to properly assess randomness quality.
+ * NIST SP 800-22 requirements:
+ * - Minimum 55 independent sequences (Section 4)
+ * - Minimum 1,000,000 bits per sequence (Section 4)
+ * - Multi-sequence analysis with proportion passing and P-value uniformity tests
  *
- * Test modes:
- * - **Quick**: 55 sequences × 100K bits (~2-3 minutes) - For CI/CD pipelines
- * - **Standard**: 100 sequences × 1M bits (~10-15 minutes) - NIST compliant baseline
- * - **Comprehensive**: 1000 sequences × 1M bits (~60+ minutes) - Research-grade validation
- *
- * Environment variable: `NIST_TEST_MODE` (values: "quick", "standard", "comprehensive")
+ * This configuration uses NIST minimum requirements for standards compliance.
  */
 object NistTestConfig {
 
     /**
-     * Test mode enumeration.
+     * Number of independent sequences to test (NIST Section 4 minimum).
      */
-    enum class TestMode {
-        /** Fast mode for CI/CD: 55 sequences × 100K bits */
-        QUICK,
-
-        /** NIST baseline: 100 sequences × 1M bits */
-        STANDARD,
-
-        /** Research-grade: 1000 sequences × 1M bits */
-        COMPREHENSIVE
-    }
+    const val sequenceCount: Int = 55
 
     /**
-     * Current test mode, determined by NIST_TEST_MODE environment variable.
-     * Defaults to QUICK for CI/CD performance.
+     * Bit length for each sequence (NIST Section 4 minimum).
      */
-    val mode: TestMode by lazy {
-        val envMode = getEnvironmentVariable("NIST_TEST_MODE")?.lowercase()
-        when (envMode) {
-            "standard" -> TestMode.STANDARD
-            "comprehensive" -> TestMode.COMPREHENSIVE
-            else -> TestMode.QUICK // Default for CI/CD
-        }
-    }
-
-    /**
-     * Number of independent sequences to test.
-     */
-    val sequenceCount: Int
-        get() = when (mode) {
-            TestMode.QUICK -> 55
-            TestMode.STANDARD -> 100
-            TestMode.COMPREHENSIVE -> 1000
-        }
-
-    /**
-     * Bit length for each sequence.
-     */
-    val sequenceLength: Int
-        get() = when (mode) {
-            TestMode.QUICK -> 100_000
-            TestMode.STANDARD -> 1_000_000
-            TestMode.COMPREHENSIVE -> 1_000_000
-        }
+    const val sequenceLength: Int = 1_000_000
 
     /**
      * Significance level for statistical tests (α = 0.01 per NIST).
@@ -111,19 +71,6 @@ object NistTestConfig {
         return Pair(minPassing, maxPassing)
     }
 
-    /**
-     * Platform-agnostic environment variable access.
-     * Returns null if variable doesn't exist.
-     */
-    private fun getEnvironmentVariable(name: String): String? {
-        return try {
-            // This will be implemented differently per platform via expect/actual if needed
-            // For now, we'll use a simple approach that works in common code
-            null // Will default to QUICK mode
-        } catch (e: Exception) {
-            null
-        }
-    }
 }
 
 /**
@@ -162,7 +109,6 @@ data class NistTestResult(
             appendLine("=" .repeat(80))
             appendLine("NIST SP 800-22: $testName")
             appendLine("=" .repeat(80))
-            appendLine("Test Mode: ${config.mode}")
             appendLine("Sequences: ${pValues.size}")
             appendLine("Sequence Length: ${config.sequenceLength} bits")
             appendLine()

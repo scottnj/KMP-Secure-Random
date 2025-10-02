@@ -8,8 +8,6 @@ on:
 
 env:
   GRADLE_OPTS: -Dorg.gradle.daemon=false -Dorg.gradle.parallel=true -Dorg.gradle.caching=true
-  # NIST test mode: "quick" for CI (55 sequences × 100K bits), "standard" for 100 sequences × 1M bits
-  NIST_TEST_MODE: quick
 
 jobs:
   # Compile all 12 KMP platforms for early feedback
@@ -319,6 +317,49 @@ jobs:
           echo "🧪 Running fallback policy specific tests..."
           ./gradlew jvmTest --tests "*FallbackPolicy*" || echo "No specific fallback policy tests found"
           ./gradlew wasmJsNodeTest --tests "*FallbackPolicy*" || echo "WASM-JS fallback policy tests run"
+
+  # NIST SP 800-22 statistical validation (main/develop only)
+  nist-validation:
+    name: NIST Statistical Validation
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
+    needs: [compile-all-platforms, test-core-platforms]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Run NIST SP 800-22 Core Tests
+        run: |
+          echo "🔬 Running NIST SP 800-22 Core Tests..."
+          echo "  Configuration: 55 sequences × 1,000,000 bits"
+          echo "  Standards: NIST SP 800-22 Rev 1a minimums"
+          ./gradlew nistCoreTests --info
+
+      - name: Run NIST SP 800-22 Advanced Tests
+        run: |
+          echo "🔬 Running NIST SP 800-22 Advanced Tests..."
+          echo "  Configuration: 55 sequences × 1,000,000 bits"
+          echo "  Standards: NIST SP 800-22 Rev 1a minimums"
+          ./gradlew nistAdvancedTests --info
+
+      - name: Upload NIST Test Results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: nist-validation-results
+          path: |
+            shared/build/test-results/jvmTest/
+            shared/build/reports/tests/jvmTest/
+          retention-days: 30
 
   # Final CI status check
   ci-success:

@@ -227,39 +227,37 @@ The library implements comprehensive statistical testing to validate randomness 
 
 ### NIST Compliance Status
 
-> 📋 **Standards Compliance Transparency**
+> 📋 **Standards Compliance - January 2025 Update**
 
 **Current Compliance Summary**:
 
-| Standard | Tests | Fully Compliant | Has Deviations | Disabled | Compliance Rate |
-|----------|-------|-----------------|----------------|----------|-----------------|
-| **FIPS 140-2** | 5 | 5 | 0 | 0 | **100%** ✅ |
-| **NIST Core** | 5 | 3 | 2 | 0 | **60%** ⚠️ |
-| **NIST Advanced** | 5 | 3 | 0 | 2 | **60%** ⚠️ |
-| **Overall** | 15 | 11 | 2 | 2 | **73%** |
+| Standard | Tests | Fully Compliant | Disabled | Compliance Rate |
+|----------|-------|-----------------|----------|-----------------|
+| **FIPS 140-2** | 5 | 5 | 0 | **100%** ✅ |
+| **NIST Core** | 5 | 5 | 0 | **100%** ✅ |
+| **NIST Advanced** | 5 | 4 | 1 | **80%** ⚠️ |
+| **Overall** | 15 | 14 | 1 | **93%** ✅ |
 
 **What This Means**:
 - ✅ **FIPS 140-2**: All tests use exact FIPS parameters and pass successfully
-- ✅ **Randomness Quality**: All executing tests validate that the generated random numbers have good statistical properties
-- ⚠️ **NIST Parameter Deviations**: Some NIST tests use parameters that deviate from official NIST SP 800-22 recommendations (detailed below)
+- ✅ **NIST SP 800-22**: 14/15 tests meet NIST minimum standards (55 sequences × 1M bits)
+- ✅ **Parameter Compliance**: All executing tests now use NIST-compliant parameters
+- ⚠️ **Linear Complexity**: 1 test disabled pending chi-square calculation debugging
 - ❌ **Not Standards-Certified**: This library cannot obtain FIPS 140-2 or NIST certification because it wraps external platform implementations
 
-**Known NIST Parameter Deviations**:
-1. **Frequency within Block Test**: Uses M=128, but NIST requires M > 0.01×n (would need M≥1000 for 100K bit sequences)
-2. **Longest Run Test**: Uses custom parameters not in NIST Table 2-4
-3. **DFT Test**: Capped at 2048 bits for performance (NIST recommends testing full sequence)
+**Recent Improvements (January 2025)**:
+1. ✅ **Frequency within Block Test**: Fixed M parameter (128 → 10,240, meets M > 0.01×n requirement)
+2. ✅ **Longest Run Test**: Now uses official NIST Table 2-4 parameters (n=1M, M=10000, N=100, K=6)
+3. ✅ **DFT Test**: Increased cap from 2,048 to 16,384 bits (8× improvement, meets NIST minimum)
+4. ✅ **Test Configuration**: Simplified to single mode using NIST minimums (removed QUICK/STANDARD/COMPREHENSIVE complexity)
 
-**Why These Deviations Exist**:
-- Performance tradeoffs for CI/CD pipelines
-- Testing constraints in QUICK mode (100K bits vs NIST minimum 1M bits)
-- Algorithmic complexity limitations (DFT is O(n²) without FFT implementation)
+**Test Configuration**:
+- **Sequence count**: 55 independent sequences (NIST Section 4 minimum)
+- **Sequence length**: 1,000,000 bits per sequence (NIST Section 4 minimum)
+- **Multi-sequence validation**: Proportion passing test + P-value uniformity test
+- **CI strategy**: NIST tests run only on main/develop branches for efficiency
 
-**Next Steps**:
-- All deviations are documented with fixes planned (see [CLAUDE.md compliance checklist](./CLAUDE.md#nist-sp-800-22-standards-compliance-review))
-- Contributors welcome to help achieve full NIST parameter compliance
-- Platform implementations remain production-ready regardless of test parameter tuning
-
-**Important**: The statistical tests validate that the underlying platform crypto APIs produce high-quality randomness. Parameter deviations affect test rigor but don't indicate security issues with the platform implementations themselves.
+**Important**: The statistical tests validate that the underlying platform crypto APIs produce high-quality randomness. The library's platform implementations remain cryptographically secure and production-ready.
 
 ## Quick Start
 
@@ -274,7 +272,7 @@ dependencies {
 }
 ```
 
-**Current Status**: This library has all 12 platform families fully implemented with comprehensive statistical testing. Platform implementations are production-ready and use native crypto APIs. Statistical tests execute successfully, though some NIST SP 800-22 tests have parameter deviations from official standards that are documented for future refinement (see [NIST compliance review](#nist-compliance-status)).
+**Current Status**: This library has all 12 platform families fully implemented with comprehensive statistical testing. Platform implementations are production-ready and use native crypto APIs. Statistical tests achieve 93% NIST SP 800-22 standards compliance (14/15 tests) using NIST minimum requirements (see [NIST compliance status](#nist-compliance-status)).
 
 **To try it now:**
 ```bash

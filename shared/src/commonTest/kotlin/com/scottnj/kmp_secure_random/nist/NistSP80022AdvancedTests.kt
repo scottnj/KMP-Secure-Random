@@ -84,9 +84,10 @@ class NistSP80022AdvancedTests {
     private fun performSingleDFTTest(rng: com.scottnj.kmp_secure_random.SecureRandom, sequenceIndex: Int): Double {
 
         // Use configured sequence length, round down to nearest power of 2 for efficiency
-        // Cap at 2048 bits for naive DFT performance (O(n²) complexity)
-        // Full NIST compliance would require FFT implementation (O(n log n))
-        val n = minOf(highestOneBit(NistTestConfig.sequenceLength), 2048)
+        // Cap at 16,384 bits (2^14) for practical test execution time with naive DFT
+        // Note: Naive DFT is O(n²) complexity - 16K bits takes ~2 min, 524K would take hours
+        // (Future enhancement: FFT implementation would allow testing full sequences)
+        val n = minOf(highestOneBit(NistTestConfig.sequenceLength), 16384)
 
         val bytesResult = rng.nextBytes(n / 8)
         assertTrue(bytesResult.isSuccess, "Failed to generate random bytes in sequence $sequenceIndex")

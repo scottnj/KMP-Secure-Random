@@ -140,8 +140,8 @@ class NistSP80022CoreTests {
      */
     private fun performSingleFrequencyWithinBlockTest(sequenceIndex: Int): Double {
         val n = NistTestConfig.sequenceLength
-        val M = 128 // Block size (NIST recommendation: M >= 20)
-        val N = n / M // Number of blocks
+        val M = 10240 // Block size (NIST requirement: M > 0.01×n = 10,000 for 1M bits)
+        val N = n / M // Number of blocks (~97)
 
         val rng = createSecureRandom().getOrThrow()
         val bytesResult = rng.nextBytes(n / 8)
@@ -292,19 +292,22 @@ class NistSP80022CoreTests {
 
     /**
      * Performs a single Longest Run of Ones Test.
-     * Uses parameters for n = 75,000 (K=6, M=10,000, N=7.5) from NIST table 2-4
+     * Uses NIST Table 2-4 parameters for n = 1,000,000 bits:
+     * M = 10,000 (block size)
+     * N = 100 (number of blocks)
+     * K = 6 (number of run-length categories)
      * @param sequenceIndex The sequence number for logging
      * @return P-value for this sequence
      */
     private fun performSingleLongestRunTest(sequenceIndex: Int): Double {
-        val n = 6272 // Total bits (must be divisible by M)
-        val M = 128 // Block size
-        val N = n / M // Number of blocks = 49
-        val K = 5 // Number of categories (for M=128, from NIST table)
+        val n = NistTestConfig.sequenceLength // 1,000,000 bits
+        val M = 10000 // Block size (from NIST Table 2-4 for n=1M)
+        val N = n / M // Number of blocks = 100
+        val K = 6 // Number of categories (from NIST Table 2-4)
 
-        // Probability distribution for M=128 (from NIST SP 800-22 Table 2-3)
-        // Categories: ≤4, 5, 6, 7, 8, ≥9
-        val probabilities = doubleArrayOf(0.1174, 0.2430, 0.2493, 0.1752, 0.1027, 0.1124)
+        // Probability distribution for M=10,000 (from NIST SP 800-22 Table 2-4)
+        // Categories: ≤10, 11, 12, 13, 14, 15, ≥16
+        val probabilities = doubleArrayOf(0.0882, 0.2092, 0.2483, 0.1933, 0.1208, 0.0675, 0.0727)
 
         val rng = createSecureRandom().getOrThrow()
         val bytesResult = rng.nextBytes(n / 8)
@@ -313,7 +316,7 @@ class NistSP80022CoreTests {
         val bits = bytesToBits(bytesResult.getOrNull()!!)
 
         // Count frequency of longest runs in each block
-        val frequencies = IntArray(K + 1) // Categories: ≤4, 5, 6, 7, 8, ≥9
+        val frequencies = IntArray(K + 1) // Categories: ≤10, 11, 12, 13, 14, 15, ≥16
 
         for (i in 0 until N) {
             var longestRun = 0
@@ -329,14 +332,15 @@ class NistSP80022CoreTests {
                 }
             }
 
-            // Categorize the longest run (from NIST table for M=128)
+            // Categorize the longest run (from NIST Table 2-4 for M=10,000)
             val category = when {
-                longestRun <= 4 -> 0
-                longestRun == 5 -> 1
-                longestRun == 6 -> 2
-                longestRun == 7 -> 3
-                longestRun == 8 -> 4
-                else -> 5 // ≥9
+                longestRun <= 10 -> 0
+                longestRun == 11 -> 1
+                longestRun == 12 -> 2
+                longestRun == 13 -> 3
+                longestRun == 14 -> 4
+                longestRun == 15 -> 5
+                else -> 6 // ≥16
             }
             frequencies[category]++
         }
