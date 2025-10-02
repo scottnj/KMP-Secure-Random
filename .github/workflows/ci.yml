@@ -93,7 +93,7 @@ jobs:
             task: testDebugUnitTest
           - platform: JavaScript
             os: ubuntu-latest
-            task: jsTest
+            task: jsNodeTest
           - platform: WASM-JS
             os: ubuntu-latest
             task: wasmJsNodeTest

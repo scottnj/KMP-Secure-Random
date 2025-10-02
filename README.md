@@ -411,10 +411,14 @@ when {
 ```shell
 ./gradlew allTests              # All platforms
 ./gradlew jvmTest              # JVM only
+./gradlew jsNodeTest           # JavaScript (Node.js - recommended)
+./gradlew jsBrowserTest        # JavaScript (Browser - requires Chrome)
 ./gradlew wasmJsTest           # WASM-JS only
 ./gradlew iosSimulatorArm64Test # iOS only
 ./gradlew linuxX64Test         # Linux x64 (requires Linux machine)
 ```
+
+**Note**: For JavaScript testing, `jsNodeTest` is recommended as it requires no browser setup and provides identical coverage to `jsBrowserTest`.
 
 ### GitHub Actions CI/CD
 
@@ -555,9 +559,15 @@ We welcome contributions to KMP Secure Random! This project aims to provide secu
    ./gradlew jvmTest                # Test JVM implementation
    ./gradlew testDebugUnitTest      # Test Android implementation
    ./gradlew iosSimulatorArm64Test  # Test iOS implementation
-   ./gradlew jsTest                 # Test JavaScript implementation
+   ./gradlew jsNodeTest             # Test JavaScript (Node.js - recommended)
+   ./gradlew jsBrowserTest          # Test JavaScript (Browser - requires Chrome)
    ./gradlew wasmJsTest            # Test WASM-JS implementation
    ```
+
+   **JavaScript Testing Notes**:
+   - **Recommended**: Use `jsNodeTest` for JavaScript validation (faster, no browser setup needed)
+   - **Browser Tests**: `jsBrowserTest` requires Chrome installed and is optional
+   - **CI/CD**: GitHub Actions uses `jsNodeTest` automatically (identical code coverage)
 
 4. **Run Quality Checks**
    ```bash

@@ -60,7 +60,16 @@ kotlin {
     // JavaScript/Browser target
     js(IR) {
         outputModuleName = "kmp-secure-random"
-        browser()
+        browser {
+            testTask {
+                useKarma {
+                    // Use ChromeHeadlessNoSandbox for both local (macOS) and CI (Ubuntu) compatibility
+                    // The --no-sandbox flag is required for CI environments and also fixes many
+                    // macOS Chrome launching issues with Karma
+                    useChromeHeadlessNoSandbox()
+                }
+            }
+        }
         nodejs {
             testTask {
                 useMocha {
