@@ -323,44 +323,55 @@ class NistSP80022AdvancedTests {
      * The test uses the Berlekamp-Massey algorithm to compute the linear complexity.
      * Uses NIST standard parameters: n=1,000,000 bits, M=500, N=2,000 blocks.
      *
-     * STATUS: DISABLED - Requires calibration against NIST reference implementation.
-     * Issue: Chi-square values consistently too high despite multiple formula attempts.
-     * Root cause: Uncertain - may be Ti normalization, probability distribution, or category boundaries.
-     * The Berlekamp-Massey algorithm implementation is correct and functional.
+     * Reference: NIST SP 800-22 Section 2.10
+     * Fixed: Corrected Ti normalization formula to match NIST reference implementation.
      */
-    @kotlin.test.Ignore
     @Test
     fun testLinearComplexity() {
-        // Test disabled - requires calibration against NIST reference implementation
-        // When re-enabled, this will follow the same pattern as other tests:
-        // 1. Test multiple sequences
-        // 2. Collect P-values
-        // 3. Use NistStatisticalAnalysis.analyzeMultipleSequences()
-        // 4. Check both proportion and uniformity
+        val testName = "Linear Complexity Test"
+        val pValues = mutableListOf<Double>()
+
+        // Test multiple independent sequences
+        repeat(NistTestConfig.sequenceCount) { sequenceIndex ->
+            val pValue = performSingleLinearComplexityTest(sequenceIndex + 1)
+            pValues.add(pValue)
+        }
+
+        // Perform NIST multi-sequence analysis
+        val result = NistStatisticalAnalysis.analyzeMultipleSequences(testName, pValues)
+
+        // Print detailed report
+        println(result.toReport())
+
+        // Assert both proportion and uniformity tests pass
+        assertTrue(
+            result.passed,
+            "NIST $testName failed. " +
+            "Proportion: ${result.proportionPassing}/${pValues.size}, " +
+            "Uniformity P-value: ${result.uniformityPValue}"
+        )
     }
 
     /**
      * Performs a single Linear Complexity Test.
      * Uses corrected NIST parameters with larger sample size.
-     * @param iteration The iteration number for logging
-     * @return Pair of (P-value, debug info)
+     * @param sequenceIndex The sequence number for logging
+     * @return P-value for this sequence
      */
-    private fun performSingleLinearComplexityTest(iteration: Int): Pair<Double, String> {
+    private fun performSingleLinearComplexityTest(sequenceIndex: Int): Double {
         val n = 1000000 // Total bits (NIST standard: 1M bits minimum)
         val M = 500 // Block length (NIST default: M=500)
         val N = n / M // Number of blocks = 2000
 
         val bytesResult = secureRandom.nextBytes(n / 8)
-        assertTrue(bytesResult.isSuccess, "Failed to generate random bytes in iteration $iteration")
+        assertTrue(bytesResult.isSuccess, "Failed to generate random bytes in sequence $sequenceIndex")
 
         val bits = bytesToBits(bytesResult.getOrNull()!!)
 
         // Expected linear complexity (NIST formula)
-        val mu = M / 2.0 + (9.0 + if (M % 2 == 0) 1 else -1) / 36.0 - 1.0 / M.toDouble().pow(6) / 3.0
-
-        // Standard deviation (approximate theoretical value)
-        // Based on the variance formula for linear complexity: σ² ≈ M/36
-        val sigma = sqrt(M / 36.0)
+        // Reference: NIST SP 800-22 Section 2.10
+        val t2 = (M / 3.0 + 2.0 / 9) / 2.0.pow(M)
+        val mu = M / 2.0 + (9.0 + (-1.0).pow(M + 1)) / 36.0 - t2
 
         // Count blocks in different categories (7 NIST standard categories)
         var v0 = 0 // Ti <= -2.5
@@ -377,9 +388,9 @@ class NistSP80022AdvancedTests {
             val complexity = berlekampMassey(block).toDouble()
 
             // Calculate Ti (normalized deviation from expected complexity)
-            // Formula: Ti = (-1)^(M+1) * (L - μ) / σ
-            // Note: Calibration may be required for variance formula and category boundaries
-            val Ti: Double = (if (M % 2 == 0) -1.0 else 1.0) * (complexity - mu) / sigma
+            // Formula from NIST reference implementation:
+            // Ti = -1.0 * ((-1)^M * (L - μ) + 2.0/9)
+            val Ti: Double = -1.0 * ((-1.0).pow(M) * (complexity - mu) + 2.0 / 9)
 
             // Categorize Ti value (7 NIST standard categories)
             if (Ti <= -2.5) {
@@ -399,9 +410,11 @@ class NistSP80022AdvancedTests {
             }
         }
 
-        // Expected probabilities (from NIST SP 800-22 Table 2-8, 7 standard categories)
-        // Categories: Ti≤-2.5, -2.5<Ti≤-1.5, -1.5<Ti≤-0.5, -0.5<Ti≤0.5, 0.5<Ti≤1.5, 1.5<Ti≤2.5, Ti>2.5
-        val pi = doubleArrayOf(0.010417, 0.03125, 0.125, 0.5, 0.25, 0.0625, 0.020833)
+        // Expected probabilities (from NIST SP 800-22 Table 2-8 via Python reference)
+        // Python reference reverses histogram counts, so probabilities map as:
+        // v0 (Ti≤-2.5) → p[6], v1 (-2.5<Ti≤-1.5) → p[5], v2 (-1.5<Ti≤-0.5) → p[4]
+        // v3 (-0.5<Ti≤0.5) → p[3], v4 (0.5<Ti≤1.5) → p[2], v5 (1.5<Ti≤2.5) → p[1], v6 (Ti>2.5) → p[0]
+        val pi = doubleArrayOf(0.020833, 0.0625, 0.25, 0.5, 0.125, 0.03125, 0.010417)
 
         // Calculate chi-square statistic (7 terms for 7 categories)
         val chiSquare =
@@ -414,10 +427,7 @@ class NistSP80022AdvancedTests {
             (v6 - N * pi[6]).pow(2) / (N * pi[6])
 
         // Calculate P-value (6 degrees of freedom for 7 categories)
-        val pValue = igamc(6.0 / 2.0, chiSquare / 2.0)
-
-        val details = "N=$N, M=$M, μ=$mu, χ²=$chiSquare, v=[$v0,$v1,$v2,$v3,$v4,$v5,$v6]"
-        return Pair(pValue, details)
+        return igamc(6.0 / 2.0, chiSquare / 2.0)
     }
 
     /**
